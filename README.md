@@ -1,3 +1,14 @@
-# Controller SVG Source
+# A collection of SVGs for use on the Zaparoo project
+
+### Usage
+
+1. Place new SVG files in the `Cards`, `Consoles`, or `Controllers` directories as appropriate.
+2. Run `python process.py` to process the SVG files. This is remove `<text>` elements, ensure proper viewBox settings, and optimize the SVG.
+
+### Controller SVG Source
 
 https://thenounproject.com/browse/collection-icon/video-game-controllers-7766/
+
+### Console SVG Source
+
+https://thenounproject.com/browse/collection-icon/nintendo-handhelds-43424/
