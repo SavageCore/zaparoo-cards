@@ -16,5 +16,5 @@ https://thenounproject.com/icon/game-controller-193793/
 https://thenounproject.com/browse/collection-icon/nintendo-handhelds-43424/
 https://thenounproject.com/icon/game-boy-44989/
 https://thenounproject.com/browse/collection-icon/console-game-glyph-61149/
-https://thenounproject.com/icon/game-gear-6123786/
+https://pixabay.com/vectors/gamegear-game-sega-handheld-arcade-3432581/
 https://thenounproject.com/icon/sega-saturn-6123819/
