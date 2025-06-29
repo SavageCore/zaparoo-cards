@@ -9,6 +9,7 @@
 
 https://thenounproject.com/browse/collection-icon/video-game-controllers-7766/
 
-### Console SVG Source
+### Console SVG Sources
 
 https://thenounproject.com/browse/collection-icon/nintendo-handhelds-43424/
+https://thenounproject.com/icon/game-boy-44989/
