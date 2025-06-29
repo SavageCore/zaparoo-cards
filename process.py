@@ -50,9 +50,9 @@ for root, dirs, files in os.walk("."):
             )
 
             if result.returncode != 0:
-                print(f"❌ Error processing:\n{result.stderr}")
+                print(f"❌ Error fitting to page:\n{result.stderr}")
             else:
-                print("✅ Processed")
+                print("✅ Fit to page")
 
             # Optimise with SVGO
             result = subprocess.run(
