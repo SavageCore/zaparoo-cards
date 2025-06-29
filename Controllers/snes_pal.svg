@@ -1,26 +1,26 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg width="577.44995" height="250.65979" viewBox="0 0 152.78319 66.320681" version="1.1" id="svg10" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">
-	<defs id="defs5">
-		<filter id="a" width="1.0052444" height="1.0121648" x="-0.0026221996" y="-0.0060824008" style="color-interpolation-filters:sRGB">
-			<feColorMatrix result="color1" type="hueRotate" values="180" id="feColorMatrix1" />
-			<feColorMatrix result="fbSourceGraphic" values="-1 0 0 0 1 0 -1 0 0 1 0 0 -1 0 1 -0.21 -0.72 -0.07 2 0" id="feColorMatrix2" />
-			<feColorMatrix in="fbSourceGraphic" result="fbSourceGraphicAlpha" values="0 0 0 -1 0 0 0 0 -1 0 0 0 0 -1 0 0 0 0 1 0" id="feColorMatrix3" />
-			<feColorMatrix in="fbSourceGraphic" result="color1" type="hueRotate" values="180" id="feColorMatrix4" />
-			<feColorMatrix result="color2" values="-1 0 0 0 1 0 -1 0 0 1 0 0 -1 0 1 -0.21 -0.72 -0.07 2 0" id="feColorMatrix5" />
-		</filter>
-	</defs>
-	<g style="display:inline;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:0.501202;stroke-dasharray:none;stroke-opacity:1;filter:url(#a)" transform="matrix(1.59034,0,0,1.59034,-3.124603,-46.355865)" id="g10">
-		<circle cx="89.497002" cy="45.553001" r="20.118" style="display:inline;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:0.277948;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;paint-order:normal" transform="matrix(0.90716,0,0,0.90716,-3.893,9.105)" id="circle5" />
-		<path d="m 88.102,33.691 c -0.396,-0.382 -0.783,-1.104 -0.859,-1.607 l -0.326,-0.352 c -2.098,-2.263 -8.166,-2.323 -8.166,-2.323 -0.551,-0.006 -1.451,-0.01 -2,-0.01 h -8.5 c -0.551,0 -1,0.254 -1,0.565 0,0.311 -0.451,0.565 -1,0.565 h -32.5 c -0.55,0 -1,-0.254 -1,-0.565 0,-0.311 -0.45,-0.565 -1,-0.565 h -8.5 c -0.55,0 -1.45,0.004 -2,0.01 0,0 -6.069,0.061 -8.167,2.323 l -0.326,0.352 c -0.077,0.503 -0.464,1.226 -0.86,1.607 0,0 -9.683,6.208 -9.683,16.874 0,11.065 8.97,20.035 20.035,20.035 4.849,0 11.896,-4.088 11.896,-4.088 l 0.865,-0.502 h 29.977 l 0.865,0.502 c 0,0 7.047,4.088 11.896,4.088 11.064,0 20.035,-8.97 20.035,-20.035 C 97.785,39.898 88.102,33.691 88.102,33.691 Z M 30.833,52.482 c 0,0.55 -0.45,1 -1,1 h -3.417 c -0.55,0 -1,0.45 -1,1 v 3.417 c 0,0.55 -0.45,1 -1,1 h -4 c -0.55,0 -1,-0.45 -1,-1 v -3.417 c 0,-0.55 -0.45,-1 -1,-1 H 15 c -0.55,0 -1,-0.45 -1,-1 v -4 c 0,-0.55 0.45,-1 1,-1 h 3.417 c 0.55,0 1,-0.45 1,-1 v -3.416 c 0,-0.55 0.45,-1 1,-1 h 4 c 0.55,0 1,0.45 1,1 v 3.416 c 0,0.55 0.45,1 1,1 h 3.417 c 0.55,0 1,0.45 1,1 v 4 z M 43.719,52.124 39.664,55.84 A 1.25,1.25 0 1 1 37.975,53.997 L 42.03,50.28 a 1.251,1.251 0 0 1 1.689,1.844 z m 10.277,0.009 -4.055,3.716 a 1.25,1.25 0 1 1 -1.689,-1.843 l 4.055,-3.717 a 1.2503057,1.2503057 0 1 1 1.689,1.844 z m 22.989,15.891 c -9.896,0 -17.917,-8.021 -17.917,-17.917 0,-9.896 8.022,-17.917 17.917,-17.917 9.895,0 17.917,8.021 17.917,17.917 0,9.896 -8.021,17.917 -17.917,17.917 z" style="display:inline;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:0.501202;stroke-dasharray:none;stroke-opacity:1" id="path5" />
-		<g style="display:inline" id="g7">
-			<rect width="17.622999" height="8.1610003" x="19.427" y="79.677002" rx="4.3540001" ry="4.3540001" style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:0.290263;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;paint-order:normal" transform="rotate(-39.412)" id="rect5" />
-			<circle cx="71.266998" cy="49.945999" r="2.9820001" stroke="none" style="fill:#008d45;fill-opacity:1;stroke:none;stroke-width:0.383487;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;paint-order:normal" id="circle6" />
-			<circle cx="78.927002" cy="43.500999" r="2.9820001" stroke="none" style="fill:#0071c5;fill-opacity:1;stroke:none;stroke-width:0.383487;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;paint-order:normal" id="circle7" />
-		</g>
-		<g style="display:inline" transform="translate(6.533,6.685)" id="g9">
-			<rect width="17.622999" height="8.1610003" x="19.427" y="79.677002" rx="4.3540001" ry="4.3540001" style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:0.290263;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;paint-order:normal" transform="rotate(-39.412)" id="rect7" />
-			<circle cx="71.266998" cy="49.945999" r="2.9820001" stroke="none" style="fill:#f7c500;fill-opacity:1;stroke:none;stroke-width:0.383487;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;paint-order:normal" id="circle8" />
-			<circle cx="78.927002" cy="43.443001" r="2.9820001" stroke="none" style="fill:#d62828;fill-opacity:1;stroke:none;stroke-width:0.383487;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;paint-order:normal" id="circle9" />
-		</g>
-	</g>
+<svg viewBox="0 0 152.78319 66.320681" version="1.1" id="svg10" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">
+    <defs id="defs5">
+        <filter id="a" width="1.0052444" height="1.0121648" x="-0.0026221996" y="-0.0060824008" color-interpolation-filters="sRGB">
+            <feColorMatrix result="color1" type="hueRotate" values="180" id="feColorMatrix1"/>
+            <feColorMatrix result="fbSourceGraphic" values="-1 0 0 0 1 0 -1 0 0 1 0 0 -1 0 1 -0.21 -0.72 -0.07 2 0" id="feColorMatrix2"/>
+            <feColorMatrix in="fbSourceGraphic" result="fbSourceGraphicAlpha" values="0 0 0 -1 0 0 0 0 -1 0 0 0 0 -1 0 0 0 0 1 0" id="feColorMatrix3"/>
+            <feColorMatrix in="fbSourceGraphic" result="color1" type="hueRotate" values="180" id="feColorMatrix4"/>
+            <feColorMatrix result="color2" values="-1 0 0 0 1 0 -1 0 0 1 0 0 -1 0 1 -0.21 -0.72 -0.07 2 0" id="feColorMatrix5"/>
+        </filter>
+    </defs>
+    <g transform="matrix(1.59034,0,0,1.59034,-3.124603,-46.355865)" id="g10" display="inline" fill="#000000" fill-opacity="1" stroke="#ffffff" stroke-width="0.501202" stroke-dasharray="none" stroke-opacity="1" filter="url(#a)">
+        <circle cx="89.497002" cy="45.553001" r="20.118" transform="matrix(0.90716,0,0,0.90716,-3.893,9.105)" id="circle5" display="inline" fill="#000000" fill-opacity="1" stroke="#ffffff" stroke-width="0.277948" stroke-linecap="butt" stroke-linejoin="miter" stroke-dasharray="none" stroke-opacity="1" paint-order="normal"/>
+        <path d="m 88.102,33.691 c -0.396,-0.382 -0.783,-1.104 -0.859,-1.607 l -0.326,-0.352 c -2.098,-2.263 -8.166,-2.323 -8.166,-2.323 -0.551,-0.006 -1.451,-0.01 -2,-0.01 h -8.5 c -0.551,0 -1,0.254 -1,0.565 0,0.311 -0.451,0.565 -1,0.565 h -32.5 c -0.55,0 -1,-0.254 -1,-0.565 0,-0.311 -0.45,-0.565 -1,-0.565 h -8.5 c -0.55,0 -1.45,0.004 -2,0.01 0,0 -6.069,0.061 -8.167,2.323 l -0.326,0.352 c -0.077,0.503 -0.464,1.226 -0.86,1.607 0,0 -9.683,6.208 -9.683,16.874 0,11.065 8.97,20.035 20.035,20.035 4.849,0 11.896,-4.088 11.896,-4.088 l 0.865,-0.502 h 29.977 l 0.865,0.502 c 0,0 7.047,4.088 11.896,4.088 11.064,0 20.035,-8.97 20.035,-20.035 C 97.785,39.898 88.102,33.691 88.102,33.691 Z M 30.833,52.482 c 0,0.55 -0.45,1 -1,1 h -3.417 c -0.55,0 -1,0.45 -1,1 v 3.417 c 0,0.55 -0.45,1 -1,1 h -4 c -0.55,0 -1,-0.45 -1,-1 v -3.417 c 0,-0.55 -0.45,-1 -1,-1 H 15 c -0.55,0 -1,-0.45 -1,-1 v -4 c 0,-0.55 0.45,-1 1,-1 h 3.417 c 0.55,0 1,-0.45 1,-1 v -3.416 c 0,-0.55 0.45,-1 1,-1 h 4 c 0.55,0 1,0.45 1,1 v 3.416 c 0,0.55 0.45,1 1,1 h 3.417 c 0.55,0 1,0.45 1,1 v 4 z M 43.719,52.124 39.664,55.84 A 1.25,1.25 0 1 1 37.975,53.997 L 42.03,50.28 a 1.251,1.251 0 0 1 1.689,1.844 z m 10.277,0.009 -4.055,3.716 a 1.25,1.25 0 1 1 -1.689,-1.843 l 4.055,-3.717 a 1.2503057,1.2503057 0 1 1 1.689,1.844 z m 22.989,15.891 c -9.896,0 -17.917,-8.021 -17.917,-17.917 0,-9.896 8.022,-17.917 17.917,-17.917 9.895,0 17.917,8.021 17.917,17.917 0,9.896 -8.021,17.917 -17.917,17.917 z" id="path5" display="inline" fill="#000000" fill-opacity="1" stroke="#ffffff" stroke-width="0.501202" stroke-dasharray="none" stroke-opacity="1"/>
+        <g id="g7" display="inline">
+            <rect width="17.622999" height="8.1610003" x="19.427" y="79.677002" rx="4.3540001" ry="4.3540001" transform="rotate(-39.412)" id="rect5" fill="none" fill-opacity="1" stroke="#ffffff" stroke-width="0.290263" stroke-linecap="butt" stroke-linejoin="miter" stroke-dasharray="none" stroke-opacity="1" paint-order="normal"/>
+            <circle cx="71.266998" cy="49.945999" r="2.9820001" stroke="none" id="circle6" fill="#008d45" fill-opacity="1" stroke-width="0.383487" stroke-linecap="butt" stroke-linejoin="miter" stroke-dasharray="none" stroke-opacity="1" paint-order="normal"/>
+            <circle cx="78.927002" cy="43.500999" r="2.9820001" stroke="none" id="circle7" fill="#0071c5" fill-opacity="1" stroke-width="0.383487" stroke-linecap="butt" stroke-linejoin="miter" stroke-dasharray="none" stroke-opacity="1" paint-order="normal"/>
+        </g>
+        <g transform="translate(6.533,6.685)" id="g9" display="inline">
+            <rect width="17.622999" height="8.1610003" x="19.427" y="79.677002" rx="4.3540001" ry="4.3540001" transform="rotate(-39.412)" id="rect7" fill="none" fill-opacity="1" stroke="#ffffff" stroke-width="0.290263" stroke-linecap="butt" stroke-linejoin="miter" stroke-dasharray="none" stroke-opacity="1" paint-order="normal"/>
+            <circle cx="71.266998" cy="49.945999" r="2.9820001" stroke="none" id="circle8" fill="#f7c500" fill-opacity="1" stroke-width="0.383487" stroke-linecap="butt" stroke-linejoin="miter" stroke-dasharray="none" stroke-opacity="1" paint-order="normal"/>
+            <circle cx="78.927002" cy="43.443001" r="2.9820001" stroke="none" id="circle9" fill="#d62828" fill-opacity="1" stroke-width="0.383487" stroke-linecap="butt" stroke-linejoin="miter" stroke-dasharray="none" stroke-opacity="1" paint-order="normal"/>
+        </g>
+    </g>
 </svg>

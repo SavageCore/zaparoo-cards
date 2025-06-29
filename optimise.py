@@ -19,8 +19,6 @@ for root, dirs, files in os.walk("."):
             os.makedirs(root + "/_optimised", exist_ok=True)
             output_path = os.path.join(root + "/_optimised", file)
 
-            print(f"Optimising: {file}")
-
             result = subprocess.run(
                 [
                     svgo_path,
@@ -30,6 +28,7 @@ for root, dirs, files in os.walk("."):
                     output_path,
                     "--config",
                     config_path,
+                    "--pretty",
                 ],
                 capture_output=True,
                 text=True,
