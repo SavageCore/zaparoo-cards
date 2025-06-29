@@ -1,0 +1,14 @@
+<svg data-name="Layer 2" viewBox="0 0 56 48.139999" x="0px" y="0px" version="1.1" id="svg6" xmlns:svg="http://www.w3.org/2000/svg">
+    <rect x="35.5" y="27.439999" width="9" height="3" id="rect1"/>
+    <polygon points="35.16,50.82 5.5,50.82 5.5,46.82 58.5,46.82 58.5,50.82 52.16,50.82 52.16,54.68 60,54.68 60,45.18 4,45.18 4,54.68 35.16,54.68" id="polygon1" transform="translate(-4,-7.68)"/>
+    <rect x="50" y="31.439999" width="3" height="3" id="rect2"/>
+    <path d="m 31,34.44 h 18 v -3 H 31 Z m 1.28,-2 h 15 v 1 h -15 z" id="path2"/>
+    <path d="m 23.78,3.32 h -21 v 11 h 21 z M 7,11.32 A 2.5,2.5 0 1 1 9.5,8.82 2.5,2.5 0 0 1 7,11.32 Z m 6.17,1.5 h -2 v -2 h 2 z m 0,-3 h -2 v -2 h 2 z m 0,-3 h -2 v -2 h 2 z m 3,6 h -2 v -2 h 2 z m 0,-3 h -2 v -2 h 2 z m 0,-3 h -2 v -2 h 2 z m 3,6 h -2 v -2 h 2 z m 0,-3 h -2 v -2 h 2 z m 0,-3 h -2 v -2 h 2 z m 3,6 h -2 v -2 h 2 z m 0,-3 h -2 v -2 h 2 z m 0,-3 h -2 v -2 h 2 z" id="path3"/>
+    <rect x="34.16" y="43.139999" width="11" height="3" id="rect3"/>
+    <rect x="27" y="31.439999" width="3" height="3" id="rect4"/>
+    <path d="m 34.5,26.44 h 11 v 4 H 53 V 3.32 H 27 v 27.12 h 7.5 z m 16,-22.67 h 1 v 4 h -1 z m -2,0 h 1 v 4 h -1 z m -2,0 h 1 v 4 h -1 z m -2,0 h 1 v 4 h -1 z m -2,0 h 1 v 4 h -1 z m -2,0 h 1 v 4 h -1 z m -2,0 h 1 v 4 h -1 z m -2,0 h 1 v 4 h -1 z m -2,0 h 1 v 4 h -1 z m -5,4 h -1 v -4 h 1 z m 2,0 h -1 v -4 h 1 z m 2,0 h -1 v -4 h 1 z" id="path4"/>
+    <polygon points="37.16,54.82 37.16,54.68 37.16,50.82 36.16,50.82 36.16,54.68 36.16,55.82 51.16,55.82 51.16,54.68 51.16,50.82 50.16,50.82 50.16,54.68 50.16,54.82" id="polygon4" transform="translate(-4,-7.68)"/>
+    <path d="M 0,0 V 36.5 H 56 V 0 Z m 2.5,35.44 h -1 v -5 h 1 z m 2,0 h -1 v -5 h 1 z m 2,0 h -1 v -5 h 1 z m 2,0 h -1 v -5 h 1 z m 2,0 h -1 v -5 h 1 z m 2,0 h -1 v -5 h 1 z m 2,0 h -1 v -5 h 1 z m 2,0 h -1 v -5 h 1 z m 2,0 h -1 v -5 h 1 z m 2,0 h -1 v -5 h 1 z m 2,0 h -1 v -5 h 1 z m 2,0 h -1 v -5 h 1 z m 0.28,-6.33 h -23 v -13 h 23 z m 0,-13.84 h -23 V 2.32 h 23 z M 54,35.44 H 26 V 2.32 h 28 z" id="path5"/>
+    <rect x="2.5" y="40.139999" width="51" height="2" id="rect5"/>
+    <path d="m 23.78,17.11 h -21 v 11 h 21 z M 7,25.11 a 2.5,2.5 0 1 1 2.5,-2.5 2.51,2.51 0 0 1 -2.5,2.5 z m 6.17,1.5 h -2 v -2 h 2 z m 0,-3 h -2 v -2 h 2 z m 0,-3 h -2 v -2 h 2 z m 3,6 h -2 v -2 h 2 z m 0,-3 h -2 v -2 h 2 z m 0,-3 h -2 v -2 h 2 z m 3,6 h -2 v -2 h 2 z m 0,-3 h -2 v -2 h 2 z m 0,-3 h -2 v -2 h 2 z m 3,6 h -2 v -2 h 2 z m 0,-3 h -2 v -2 h 2 z m 0,-3 h -2 v -2 h 2 z" id="path6"/>
+</svg>
