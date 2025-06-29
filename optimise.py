@@ -16,8 +16,7 @@ for root, dirs, files in os.walk("."):
     for file in files:
         if file.endswith(".svg"):
             input_path = os.path.join(root, file)
-            os.makedirs(root + "/_optimised", exist_ok=True)
-            output_path = os.path.join(root + "/_optimised", file)
+            output_path = os.path.join(root, file)
 
             result = subprocess.run(
                 [

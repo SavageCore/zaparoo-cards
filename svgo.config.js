@@ -11,6 +11,8 @@ module.exports = {
         "removeUselessDefs",
         "convertStyleToAttrs",
         "removeDimensions",
+        "removeXMLNS",
+        "removeXMLProcInst",
 
         // Preserve group structure
         {
