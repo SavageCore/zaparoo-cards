@@ -18,3 +18,4 @@ https://thenounproject.com/icon/game-boy-44989/
 https://thenounproject.com/browse/collection-icon/console-game-glyph-61149/
 https://pixabay.com/vectors/gamegear-game-sega-handheld-arcade-3432581/
 https://thenounproject.com/icon/sega-saturn-6123819/
+https://thenounproject.com/browse/collection-icon/arcade-machines-2d-39704/
