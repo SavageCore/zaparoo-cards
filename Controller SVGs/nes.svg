@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg version="1.1" x="0px" y="0px" viewBox="0 0 94.667 40.5" enable-background="new 0 0 100 100" xml:space="preserve" id="svg5" sodipodi:docname="nes.svg" inkscape:version="1.4.2 (f4327f4, 2025-05-13)" width="94.667" height="40.5" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">
+	<defs id="defs5" />
+	<namedview id="namedview5" pagecolor="#ffffff" bordercolor="#999999" borderopacity="1" inkscape:showpageshadow="2" inkscape:pageopacity="0" inkscape:pagecheckerboard="0" inkscape:deskcolor="#d1d1d1" inkscape:zoom="9.4" inkscape:cx="47.393617" inkscape:cy="32.712766" inkscape:window-width="2560" inkscape:window-height="1377" inkscape:window-x="-8" inkscape:window-y="-8" inkscape:window-maximized="1" inkscape:current-layer="svg5" />
+	<g id="g4" transform="translate(-2.667,-29.75)">
+		<circle cx="73.723" cy="58.667" r="3.8889999" id="circle1" />
+		<circle cx="86.056999" cy="58.667" r="3.8889999" id="circle2" />
+		<path d="M 95.334,29.75 H 4.667 c -1.104,0 -2,0.896 -2,2 v 36.5 c 0,1.104 0.896,2 2,2 h 90.667 c 1.104,0 2,-0.896 2,-2 v -36.5 c 0,-1.104 -0.896,-2 -2,-2 z M 28.847,56.402 c 0,0.55 -0.45,1 -1,1 h -3.152 c -0.55,0 -1,0.45 -1,1 v 3.153 c 0,0.55 -0.45,1 -1,1 h -4.5 c -0.55,0 -1,-0.45 -1,-1 v -3.153 c 0,-0.55 -0.45,-1 -1,-1 h -3.152 c -0.55,0 -1,-0.45 -1,-1 v -4.499 c 0,-0.55 0.45,-1 1,-1 h 3.152 c 0.55,0 1,-0.45 1,-1 V 46.75 c 0,-0.55 0.45,-1 1,-1 h 4.5 c 0.55,0 1,0.45 1,1 v 3.153 c 0,0.55 0.45,1 1,1 h 3.152 c 0.55,0 1,0.45 1,1 z M 63.25,62.25 c 0,1.104 -0.896,2 -2,2 h -22.5 c -1.104,0 -2,-0.896 -2,-2 v -7.166 c 0,-1.104 0.896,-2 2,-2 h 22.5 c 1.104,0 2,0.896 2,2 z m 15.889,0 c 0,1.104 -0.895,2 -2,2 h -6.832 c -1.105,0 -2,-0.896 -2,-2 v -7.166 c 0,-1.104 0.895,-2 2,-2 h 6.832 c 1.105,0 2,0.896 2,2 z m 12.334,0 c 0,1.104 -0.896,2 -2,2 h -6.834 c -1.104,0 -2,-0.896 -2,-2 v -7.166 c 0,-1.104 0.896,-2 2,-2 h 6.834 c 1.104,0 2,0.896 2,2 z" id="path2" />
+		<path d="m 45.917,57.084 h -4.334 c -0.875,0 -1.583,0.709 -1.583,1.583 0,0.874 0.708,1.583 1.583,1.583 h 4.334 c 0.875,0 1.583,-0.709 1.583,-1.583 0,-0.874 -0.709,-1.583 -1.583,-1.583 z" id="path3" />
+		<path d="m 58.418,57.084 h -4.334 c -0.875,0 -1.584,0.709 -1.584,1.583 0,0.874 0.709,1.583 1.584,1.583 h 4.334 c 0.873,0 1.582,-0.709 1.582,-1.583 0,-0.874 -0.709,-1.583 -1.582,-1.583 z" id="path4" />
+	</g>
+</svg>
