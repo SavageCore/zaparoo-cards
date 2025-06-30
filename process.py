@@ -11,6 +11,10 @@ for root, dirs, files in os.walk("."):
     # Skip the root directory itself
     if root == ".":
         continue
+    # Skip the Cards directory
+    if os.path.basename(root) == "Cards":
+        print(f"Skipping directory: {root}")
+        continue
     for file in files:
         if file.endswith(".svg"):
             input_path = os.path.join(root, file)
