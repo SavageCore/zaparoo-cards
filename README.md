@@ -2,8 +2,8 @@
 
 ### Usage
 
-1. Place new SVG files in the `Cards`, `Consoles`, or `Controllers` directories as appropriate.
-2. Run `python process.py` to process the SVG files. This is remove `<text>` elements, ensure proper viewBox settings, and optimize the SVG.
+1. Place new SVG files in the `Consoles` or `Controllers` directories as appropriate.
+2. Run `python process.py` to process the SVG files. This will remove `<text>` elements, ensure proper viewBox settings, and optimize the SVG.
 
 ### Controller SVG Sources
 
