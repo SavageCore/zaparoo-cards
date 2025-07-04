@@ -22,9 +22,9 @@
    inkscape:pageopacity="0"
    inkscape:pagecheckerboard="0"
    inkscape:deskcolor="#d1d1d1"
-   inkscape:zoom="0.83586569"
-   inkscape:cx="75.969143"
-   inkscape:cy="784.2169"
+   inkscape:zoom="2.3641852"
+   inkscape:cx="397.3885"
+   inkscape:cy="170.24893"
    inkscape:window-width="2560"
    inkscape:window-height="1377"
    inkscape:window-x="2552"
@@ -226,7 +226,7 @@
        stroke-opacity="1"
        paint-order="normal"
        inkscape:label="A"
-       style="fill:#d72727;fill-opacity:1;stroke:#ac1f1f;stroke-opacity:1" /></g><circle
+       style="display:inline;fill:#fb0f19;fill-opacity:1;stroke:#ac1f1f;stroke-opacity:1" /></g><circle
      cx="22.435425"
      cy="50.523251"
      r="11.062819"
@@ -315,5 +315,29 @@
    stroke-dasharray="none"
    stroke-dashoffset="0"
    stroke-opacity="1"
-   style="display:inline;fill:#ffffff;fill-opacity:1;stroke:none"
-   inkscape:label="ConsoleLogo" /></svg>
+   style="display:inline;fill:#e4000f;fill-opacity:1;stroke:none"
+   inkscape:label="ConsoleLogo" /><g
+   id="g95"
+   transform="matrix(0.79638929,0,0,0.79638929,489.40958,-113.16802)"
+   inkscape:label="button-logo">
+		<path
+   style="fill:#007308"
+   d="m 45.305,254.115 c 0,-4.63 7.41,-8.385 16.553,-8.385 9.157,0 16.567,3.756 16.567,8.385 0,4.644 -7.41,8.386 -16.567,8.386 -9.142,0.001 -16.553,-3.742 -16.553,-8.386 z"
+   id="path92"
+   inkscape:label="green" />
+		<path
+   style="fill:#ffff00"
+   d="m 75.908,269.635 c 0,-4.863 7.789,-8.808 17.398,-8.808 9.608,0 17.412,3.945 17.412,8.808 0,4.862 -7.804,8.808 -17.412,8.808 -9.61,0 -17.398,-3.946 -17.398,-8.808 z"
+   id="path93"
+   inkscape:label="yellow" />
+		<path
+   style="fill:#0000f7"
+   d="m 83.041,250.33 c 8.386,-0.32 15.097,-7.235 15.097,-15.709 0,-8.677 -7.046,-15.723 -15.723,-15.723 -8.619,0 -15.621,6.93 -15.724,15.534 0.204,-0.015 0.408,-0.015 0.626,-0.015 8.677,0 15.723,7.031 15.723,15.723 v 0.19 z"
+   id="path94"
+   inkscape:label="blue" />
+		<path
+   style="fill:#ff0800"
+   d="m 113.629,265.864 c 8.167,-0.32 14.689,-7.046 14.689,-15.301 0,-8.459 -6.843,-15.316 -15.301,-15.316 -8.386,0 -15.199,6.755 -15.301,15.126 0.204,-0.015 0.407,-0.015 0.611,-0.015 8.444,0 15.301,6.857 15.301,15.316 v 0.19 z"
+   id="path95"
+   inkscape:label="red" />
+	</g></svg>
