@@ -9,7 +9,7 @@
    id="svg7"
    sodipodi:docname="hucard_n64_red.svg"
    inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
-   inkscape:export-filename="png\hucard_n64.png"
+   inkscape:export-filename="png\hucard_n64_red.png"
    inkscape:export-xdpi="300"
    inkscape:export-ydpi="300"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
@@ -27,7 +27,7 @@
    inkscape:pagecheckerboard="0"
    inkscape:deskcolor="#d1d1d1"
    inkscape:zoom="0.5"
-   inkscape:cx="111"
+   inkscape:cx="113"
    inkscape:cy="551"
    inkscape:window-width="2560"
    inkscape:window-height="1377"
@@ -272,7 +272,7 @@
      style="fill:none;fill-opacity:0.5;stroke:#ff0000;stroke-width:0.221435"
      id="path8" /></g><g
    id="g2"
-   transform="matrix(1.5245511,0.40850224,-0.40850224,1.5245511,178.46385,50.352406)"
+   transform="matrix(1.5158627,0.40617418,-0.40617418,1.5158627,178.33303,50.846556)"
    inkscape:label="pad"><path
      d="m 28.054,30.038 c 0,-0.55 -0.45,-1 -1,-1 H 24.22 c -0.55,0 -1,-0.45 -1,-1 v -2.859 c 0,-0.55 -0.45,-1 -1,-1 h -2.5 c -0.55,0 -1,0.45 -1,1 v 2.859 c 0,0.55 -0.45,1 -1,1 h -2.834 c -0.55,0 -1,0.45 -1,1 v 2.5 c 0,0.55 0.45,1 1,1 h 2.834 c 0.55,0 1,0.45 1,1 v 2.808 c 0,0.55 0.45,1 1,1 h 2.5 c 0.55,0 1,-0.45 1,-1 v -2.808 c 0,-0.55 0.45,-1 1,-1 h 2.834 c 0.55,0 1,-0.45 1,-1 z"
      id="path1"
