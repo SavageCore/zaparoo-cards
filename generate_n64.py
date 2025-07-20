@@ -1,7 +1,10 @@
 import shutil
+import subprocess
 from pathlib import Path
 
 from lxml import etree
+
+inkscape_path = r"C:\Program Files\Inkscape\bin\inkscape.exe"
 
 # Define cartridge colours (main, text, shade)
 cartridge_colors = {
@@ -96,12 +99,40 @@ def create_n64_svg(base_svg_path: str, output_dir, colors: dict):
     return created_files
 
 
+def export_pngs():
+    out_path = Path("Cards/png")
+    out_path.mkdir(parents=True, exist_ok=True)
+    exported = []
+
+    for svg_file in Path("Cards").glob("hucard_n64*.svg"):
+        png_file = out_path / (svg_file.stem + ".png")
+        subprocess.run(
+            [
+                inkscape_path,
+                str(svg_file),
+                "--export-type=png",
+                f"--export-filename={png_file}",
+                "--export-dpi=300",
+            ],
+            check=True,
+        )
+        exported.append(str(png_file))
+
+    return exported
+
+
 def main():
     base_svg_path = "Cards/hucard_n64.svg"
     output_dir = "Cards"
     created = create_n64_svg(base_svg_path, output_dir, cartridge_colors)
     print("Created the following SVG files:")
     for f in created:
+        print(f)
+
+    exported = export_pngs()
+    print("")
+    print("Exported PNG files to Cards/png:")
+    for f in exported:
         print(f)
 
 
