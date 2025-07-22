@@ -1,4 +1,5 @@
 import base64
+import hashlib
 import json
 import os
 import subprocess
@@ -46,7 +47,7 @@ def get_path_bbox(svg_path):
     return xmin, ymin, xmax, ymax
 
 
-def replace_path_with_image(svg_path, image_path, game, card_index):
+def replace_path_with_image(svg_path, image_path):
     # Load SVG using lxml
     parser = etree.XMLParser(remove_blank_text=True)
     tree = etree.parse(svg_path, parser)
@@ -83,6 +84,16 @@ def replace_path_with_image(svg_path, image_path, game, card_index):
     y = ymin
 
     img = Image.open(image_path)
+    img_filename = os.path.basename(image_path)
+
+    img_hash = hashlib.md5(img_filename.encode()).hexdigest()
+    if not os.path.exists("tmp_artwork"):
+        os.makedirs("tmp_artwork")
+
+    if os.path.exists(f"tmp_artwork/temp_{img_hash}.svg"):
+        print(f"Using cached SVG for {img_filename}")
+        return
+
     img_width, img_height = img.size
 
     # Scale image to frame width, then crop vertically to frame height
@@ -115,7 +126,7 @@ def replace_path_with_image(svg_path, image_path, game, card_index):
     img_cropped.putalpha(mask)
     # --- End rounded corners mask ---
 
-    img_cropped.save(f"tmp_artwork/temp_{card_index}.png", "PNG")
+    img_cropped.save(f"tmp_artwork/temp_{img_hash}.png", "PNG")
 
     # Insert <image> element with correct x, y, width, height
     image_el = etree.Element(f"{{{svg_ns}}}image", nsmap=nsmap)
@@ -124,19 +135,19 @@ def replace_path_with_image(svg_path, image_path, game, card_index):
     image_el.set("y", str(y))
     image_el.set("width", str(frame_width))
     image_el.set("height", str(frame_height))
-    with open(f"tmp_artwork/temp_{card_index}.png", "rb") as img:
+    with open(f"tmp_artwork/temp_{img_hash}.png", "rb") as img:
         image_data = img.read()
     image_data_base64 = base64.b64encode(image_data).decode("utf-8")
     image_el.set(f"{{{xlink_ns}}}href", f"data:image/png;base64,{image_data_base64}")
     image_el.set("preserveAspectRatio", "xMidYMid slice")
 
     # Remove the temporary image file
-    os.remove(f"tmp_artwork/temp_{card_index}.png")
+    os.remove(f"tmp_artwork/temp_{img_hash}.png")
 
     parent.replace(elem, image_el)
 
     # Save the modified SVG
-    temp_svg_path = f"tmp_artwork/temp_card{card_index}.svg"
+    temp_svg_path = f"tmp_artwork/temp_{img_hash}.svg"
     tree.write(temp_svg_path, pretty_print=True, xml_declaration=True, encoding="UTF-8")
 
     # Convert SVG to PDF using Inkscape
@@ -145,7 +156,7 @@ def replace_path_with_image(svg_path, image_path, game, card_index):
             inkscape_path,
             temp_svg_path,
             "--export-type=pdf",
-            f"--export-filename=tmp_artwork/temp_card{card_index}.pdf",
+            f"--export-filename=tmp_artwork/temp_{img_hash}.pdf",
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -161,7 +172,7 @@ def replace_path_with_image(svg_path, image_path, game, card_index):
             inkscape_path,
             temp_svg_path,
             "--export-type=png",
-            f"--export-filename=tmp_artwork/temp_card{card_index}.png",
+            f"--export-filename=tmp_artwork/temp_{img_hash}.png",
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -171,10 +182,11 @@ def replace_path_with_image(svg_path, image_path, game, card_index):
         print(result.stderr.decode())
         return
 
+    return img_hash
+
 
 # Process all files and generate PDF with ReportLab
 card_images = []
-card_index = 1
 for system in os.listdir(covers_dir):
     system_path = os.path.join(covers_dir, system)
     if os.path.isdir(system_path):
@@ -185,14 +197,14 @@ for system in os.listdir(covers_dir):
                 print("")
                 print(f"Processing {game} on {system}")
                 print(f"Template path: {template_path}")
-                print("")
                 cover_path = os.path.join(system_path, filename)
                 if os.path.exists(template_path) and os.path.exists(cover_path):
-                    replace_path_with_image(template_path, cover_path, game, card_index)
-                    card_images.append(f"tmp_artwork/temp_card{card_index}.pdf")
-                    card_index += 1
+                    hash = replace_path_with_image(template_path, cover_path)
+                    card_images.append(f"tmp_artwork/temp_{hash}.pdf")
                 else:
                     print(f"Template or cover image not found for {game} on {system}")
+
+                print("")
 
 # Clean up temporary files
 # tmp_dir = "tmp_artwork"
