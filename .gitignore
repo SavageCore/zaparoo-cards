@@ -3,3 +3,5 @@ _optimised
 cards/png
 Cards/hucard_n64_*.svg
 GameCovers/*/*.svg
+tmp_artwork/
+output.pdf

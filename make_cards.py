@@ -1,13 +1,17 @@
 import base64
 import json
 import os
+import subprocess
 
 from lxml import etree
-from PIL import Image
+from PIL import Image, ImageDraw
+from svgpathtools import parse_path  # type: ignore
 
 # Base directories
 cards_dir = "Cards"
 covers_dir = "GameCovers"
+
+inkscape_path = r"C:\Program Files\Inkscape\bin\inkscape.exe"
 
 
 def get_template_path(game, system):
@@ -23,7 +27,26 @@ def get_template_path(game, system):
     return os.path.join(cards_dir, template)
 
 
-def replace_path_with_image(svg_path, image_path, game):
+def get_path_bbox(svg_path):
+    # Parse the SVG and get the path's bounding box
+    tree = etree.parse(svg_path)
+    root = tree.getroot()
+    nsmap = {k if k else "svg": v for k, v in root.nsmap.items()}
+
+    def xpath(path):
+        return root.xpath(path, namespaces=nsmap)
+
+    path_el = xpath(".//svg:path[@id='path2']")
+    if not path_el:
+        raise ValueError("Artwork-Frame1 (id='path2') not found in SVG.")
+    d = path_el[0].attrib["d"]
+    # Use svgpathtools to get the bounding box
+    path = parse_path(d)
+    xmin, xmax, ymin, ymax = path.bbox()
+    return xmin, ymin, xmax, ymax
+
+
+def replace_path_with_image(svg_path, image_path, game, card_index):
     # Load SVG using lxml
     parser = etree.XMLParser(remove_blank_text=True)
     tree = etree.parse(svg_path, parser)
@@ -53,43 +76,105 @@ def replace_path_with_image(svg_path, image_path, game):
     elem = artwork_path[0]
     parent = elem.getparent()
 
-    # Calculate image size
-    x, y = 20.425, 250.525
+    xmin, ymin, xmax, ymax = get_path_bbox(svg_path)
+    frame_width = int(xmax - xmin)
+    frame_height = int(ymax - ymin)
+    x = xmin
+    y = ymin
+
     img = Image.open(image_path)
     img_width, img_height = img.size
-    aspect_ratio = img_height / img_width
-    target_height = 577 * aspect_ratio - 47  # trim 47px overhang
 
-    # Resize and crop image losslessly using PNG
-    img_resized = img.resize((577, int(577 * aspect_ratio)), Image.Resampling.BICUBIC)
-    # Crop the bottom 47px
-    crop_box = (0, 0, 577, int(target_height))
-    img_cropped = img_resized.crop(crop_box)
-    img_cropped.save(f"tmp_artwork/temp_{game}.png", "PNG")  # Save as PNG for lossless
+    # Scale image to frame width, then crop vertically to frame height
+    scale = frame_height / img_height
+    new_height = frame_height
+    new_width = int(img_width * scale)
+    img_resized = img.resize((new_width, new_height), Image.Resampling.BICUBIC)
 
-    # Insert <image> element with ID "Cover-Art"
+    # Center crop or pad with black bars
+    if new_width > frame_width:
+        # Crop horizontally to frame width, centering the crop
+        left = (new_width - frame_width) // 2
+        right = left + frame_width
+        img_cropped = img_resized.crop((left, 0, right, frame_height))
+    else:
+        # Pad with black bars left and right
+        img_cropped = Image.new("RGBA", (frame_width, frame_height), (0, 0, 0, 255))
+        paste_x = (frame_width - new_width) // 2
+        img_cropped.paste(img_resized, (paste_x, 0))
+
+    # --- Add rounded corners mask ---
+    radius = int(
+        min(frame_width, frame_height) * 0.045
+    )  # Adjust as needed for your design
+    mask = Image.new("L", (frame_width, frame_height), 0)
+    draw = ImageDraw.Draw(mask)
+    draw.rounded_rectangle(
+        [(0, 0), (frame_width, frame_height)], radius=radius, fill=255
+    )
+    img_cropped.putalpha(mask)
+    # --- End rounded corners mask ---
+
+    img_cropped.save(f"tmp_artwork/temp_{card_index}.png", "PNG")
+
+    # Insert <image> element with correct x, y, width, height
     image_el = etree.Element(f"{{{svg_ns}}}image", nsmap=nsmap)
     image_el.set("id", "Cover-Art")
     image_el.set("x", str(x))
     image_el.set("y", str(y))
-    image_el.set("width", str(577))
-    image_el.set("height", str(target_height))
-    # Embed the image directly in the SVG
-    with open(f"tmp_artwork/temp_{game}.png", "rb") as img:
+    image_el.set("width", str(frame_width))
+    image_el.set("height", str(frame_height))
+    with open(f"tmp_artwork/temp_{card_index}.png", "rb") as img:
         image_data = img.read()
     image_data_base64 = base64.b64encode(image_data).decode("utf-8")
     image_el.set(f"{{{xlink_ns}}}href", f"data:image/png;base64,{image_data_base64}")
     image_el.set("preserveAspectRatio", "xMidYMid slice")
 
+    # Remove the temporary image file
+    os.remove(f"tmp_artwork/temp_{card_index}.png")
+
     parent.replace(elem, image_el)
 
-    # Save the modified SVG next to the cover image
-    output_path = os.path.splitext(image_path)[0] + ".svg"
-    tree.write(output_path, pretty_print=True, xml_declaration=True, encoding="UTF-8")
-    print(f"Saved: {output_path}")
+    # Save the modified SVG
+    temp_svg_path = f"tmp_artwork/temp_card{card_index}.svg"
+    tree.write(temp_svg_path, pretty_print=True, xml_declaration=True, encoding="UTF-8")
+
+    # Convert SVG to PDF using Inkscape
+    result = subprocess.run(
+        [
+            inkscape_path,
+            temp_svg_path,
+            "--export-type=pdf",
+            f"--export-filename=tmp_artwork/temp_card{card_index}.pdf",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if result.returncode != 0:
+        print("Error occurred while converting SVG to PDF:")
+        print(result.stderr.decode())
+        return
+
+    # Convert the SVG to PNG using Inkscape
+    result = subprocess.run(
+        [
+            inkscape_path,
+            temp_svg_path,
+            "--export-type=png",
+            f"--export-filename=tmp_artwork/temp_card{card_index}.png",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if result.returncode != 0:
+        print("Error occurred while converting SVG to PNG:")
+        print(result.stderr.decode())
+        return
 
 
-# Process all files in GameCovers
+# Process all files and generate PDF with ReportLab
+card_images = []
+card_index = 1
 for system in os.listdir(covers_dir):
     system_path = os.path.join(covers_dir, system)
     if os.path.isdir(system_path):
@@ -103,14 +188,16 @@ for system in os.listdir(covers_dir):
                 print("")
                 cover_path = os.path.join(system_path, filename)
                 if os.path.exists(template_path) and os.path.exists(cover_path):
-                    replace_path_with_image(template_path, cover_path, game)
+                    replace_path_with_image(template_path, cover_path, game, card_index)
+                    card_images.append(f"tmp_artwork/temp_card{card_index}.pdf")
+                    card_index += 1
                 else:
                     print(f"Template or cover image not found for {game} on {system}")
 
-# Empty the temporary directory
-tmp_dir = "tmp_artwork"
-if os.path.exists(tmp_dir):
-    for file in os.listdir(tmp_dir):
-        file_path = os.path.join(tmp_dir, file)
-        if os.path.isfile(file_path):
-            os.remove(file_path)
+# Clean up temporary files
+# tmp_dir = "tmp_artwork"
+# if os.path.exists(tmp_dir):
+#     for file in os.listdir(tmp_dir):
+#         file_path = os.path.join(tmp_dir, file)
+#         if os.path.isfile(file_path):
+#             os.remove(file_path)
