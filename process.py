@@ -35,7 +35,9 @@ for root, dirs, files in os.walk("."):
                 text_removed = True
 
             # Save the modified SVG
-            tree.write(input_path, pretty_print=True, xml_declaration=True, encoding="utf-8")
+            tree.write(
+                input_path, pretty_print=True, xml_declaration=True, encoding="utf-8"
+            )
 
             if text_removed:
                 print("✅ Removed <text> elements")
