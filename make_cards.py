@@ -2,17 +2,18 @@ import base64
 import hashlib
 import json
 import os
-import subprocess
 
+from cairosvg import svg2png  # type: ignore
 from lxml import etree
-from PIL import Image, ImageDraw
+from PIL import Image
 from svgpathtools import parse_path  # type: ignore
+from yaspin import yaspin
+
+from create_pdf import prepare_pdf
 
 # Base directories
 cards_dir = "Cards"
 covers_dir = "GameCovers"
-
-inkscape_path = r"C:\Program Files\Inkscape\bin\inkscape.exe"
 
 
 def get_template_path(game, system):
@@ -78,10 +79,21 @@ def replace_path_with_image(svg_path, image_path):
     parent = elem.getparent()
 
     xmin, ymin, xmax, ymax = get_path_bbox(svg_path)
-    frame_width = int(xmax - xmin)
-    frame_height = int(ymax - ymin)
-    x = xmin
-    y = ymin
+    frame_width = int(xmax - xmin) - 4
+
+    # Get document width from viewBox or width attribute
+    doc_width = frame_width  # Default to frame_width as fallback
+    if "viewBox" in root.attrib:
+        viewbox = root.attrib["viewBox"].split()
+        if len(viewbox) >= 3:
+            doc_width = float(viewbox[2])  # Width is the third value in viewBox
+    elif "width" in root.attrib:
+        width_str = root.attrib["width"]
+        if width_str.endswith("px"):
+            doc_width = float(width_str.replace("px", ""))
+
+    x = (doc_width - frame_width) / 2  # Center frame within document
+    y = 252.454  # Exact y from Inkscape
 
     img = Image.open(image_path)
     img_filename = os.path.basename(image_path)
@@ -96,45 +108,30 @@ def replace_path_with_image(svg_path, image_path):
 
     img_width, img_height = img.size
 
-    # Scale image to frame width, then crop vertically to frame height
-    scale = frame_height / img_height
-    new_height = frame_height
+    # Scale image vertically to match the fixed height of 721 px
+    target_height = 721
+    scale = target_height / img_height
+    new_height = int(target_height)
     new_width = int(img_width * scale)
+
     img_resized = img.resize((new_width, new_height), Image.Resampling.BICUBIC)
 
-    # Center crop or pad with black bars
-    if new_width > frame_width:
-        # Crop horizontally to frame width, centering the crop
-        left = (new_width - frame_width) // 2
-        right = left + frame_width
-        img_cropped = img_resized.crop((left, 0, right, frame_height))
-    else:
-        # Pad with black bars left and right
-        img_cropped = Image.new("RGBA", (frame_width, frame_height), (0, 0, 0, 255))
-        paste_x = (frame_width - new_width) // 2
-        img_cropped.paste(img_resized, (paste_x, 0))
+    # Create a new image with frame_width and target_height, filling with black
+    final_img = Image.new("RGBA", (frame_width, int(target_height)), (0, 0, 0, 255))
+    paste_x = (frame_width - new_width) // 2  # Center within frame width
+    paste_y = 0  # Align with top
+    final_img.paste(img_resized, (paste_x, paste_y))
 
-    # --- Add rounded corners mask ---
-    radius = int(
-        min(frame_width, frame_height) * 0.045
-    )  # Adjust as needed for your design
-    mask = Image.new("L", (frame_width, frame_height), 0)
-    draw = ImageDraw.Draw(mask)
-    draw.rounded_rectangle(
-        [(0, 0), (frame_width, frame_height)], radius=radius, fill=255
-    )
-    img_cropped.putalpha(mask)
-    # --- End rounded corners mask ---
-
-    img_cropped.save(f"tmp_artwork/temp_{img_hash}.png", "PNG")
+    # Save the final image
+    final_img.save(f"tmp_artwork/temp_{img_hash}.png", "PNG")
 
     # Insert <image> element with correct x, y, width, height
     image_el = etree.Element(f"{{{svg_ns}}}image", nsmap=nsmap)
     image_el.set("id", "Cover-Art")
     image_el.set("x", str(x))
-    image_el.set("y", str(y))
+    image_el.set("y", str(y - 1))
     image_el.set("width", str(frame_width))
-    image_el.set("height", str(frame_height))
+    image_el.set("height", str(target_height))  # Use exact height
     with open(f"tmp_artwork/temp_{img_hash}.png", "rb") as img:
         image_data = img.read()
     image_data_base64 = base64.b64encode(image_data).decode("utf-8")
@@ -150,43 +147,14 @@ def replace_path_with_image(svg_path, image_path):
     temp_svg_path = f"tmp_artwork/temp_{img_hash}.svg"
     tree.write(temp_svg_path, pretty_print=True, xml_declaration=True, encoding="UTF-8")
 
-    # Convert SVG to PDF using Inkscape
-    result = subprocess.run(
-        [
-            inkscape_path,
-            temp_svg_path,
-            "--export-type=pdf",
-            f"--export-filename=tmp_artwork/temp_{img_hash}.pdf",
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    if result.returncode != 0:
-        print("Error occurred while converting SVG to PDF:")
-        print(result.stderr.decode())
-        return
-
-    # Convert the SVG to PNG using Inkscape
-    result = subprocess.run(
-        [
-            inkscape_path,
-            temp_svg_path,
-            "--export-type=png",
-            f"--export-filename=tmp_artwork/temp_{img_hash}.png",
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    if result.returncode != 0:
-        print("Error occurred while converting SVG to PNG:")
-        print(result.stderr.decode())
-        return
+    # Convert SVG to PNG using CairoSVG
+    output_png_path = f"tmp_artwork/temp_{img_hash}.png"
+    svg2png(url=temp_svg_path, write_to=output_png_path, background_color="white")
 
     return img_hash
 
 
-# Process all files
-card_images = []
+# Create cards from templates and covers
 for system in os.listdir(covers_dir):
     system_path = os.path.join(covers_dir, system)
     if os.path.isdir(system_path):
@@ -199,12 +167,33 @@ for system in os.listdir(covers_dir):
                 print(f"Template path: {template_path}")
                 cover_path = os.path.join(system_path, filename)
                 if os.path.exists(template_path) and os.path.exists(cover_path):
-                    hash = replace_path_with_image(template_path, cover_path)
-                    card_images.append(f"tmp_artwork/temp_{hash}.pdf")
+                    replace_path_with_image(template_path, cover_path)
                 else:
                     print(f"Template or cover image not found for {game} on {system}")
 
                 print("")
+
+card_images = []
+
+# Collect card images from the temporary artwork directory
+for filename in os.listdir("tmp_artwork"):
+    if filename.endswith((".png")):
+        card_path = os.path.join("tmp_artwork", filename)
+        if os.path.isfile(card_path):
+            card_images.append(card_path)
+
+# DEBUG: Limit the number of card images for testing
+card_images = card_images[:10]  # Uncomment to limit for testing
+
+# Create a PDF with all card images
+if card_images:
+    with yaspin(text="Generating PDF with card images...", color="cyan") as spinner:
+        try:
+            prepare_pdf(card_images, print_outlines=False, cut_marks="crop")
+            spinner.ok("✅ ")
+        except Exception as e:
+            spinner.fail("💥 ")
+            print(f"Failed to generate PDF: {e}")
 
 # Clean up temporary files
 # tmp_dir = "tmp_artwork"
