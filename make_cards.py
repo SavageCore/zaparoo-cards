@@ -36,9 +36,9 @@ def get_path_bbox(svg_path):
     def xpath(path):
         return root.xpath(path, namespaces=nsmap)
 
-    path_el = xpath(".//svg:path[@id='path2']")
+    path_el = xpath(".//svg:path[@inkscape:label='Artwork-Frame1']")
     if not path_el:
-        raise ValueError("Artwork-Frame1 (id='path2') not found in SVG.")
+        raise ValueError("Artwork-Frame1 not found in SVG.")
     d = path_el[0].attrib["d"]
     # Use svgpathtools to get the bounding box
     path = parse_path(d)
