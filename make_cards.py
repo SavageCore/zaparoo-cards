@@ -185,7 +185,7 @@ def replace_path_with_image(svg_path, image_path):
     return img_hash
 
 
-# Process all files and generate PDF with ReportLab
+# Process all files
 card_images = []
 for system in os.listdir(covers_dir):
     system_path = os.path.join(covers_dir, system)
