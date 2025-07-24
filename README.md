@@ -36,6 +36,8 @@ To limit the number of cards processed use the `--limit` flag followed by a numb
 
 Limiting systems to process is done by passing the `--systems` flag followed by the system names, e.g. `--systems snes nes`.
 
+Passing the `--keep` flag will keep the temporary files created during processing, otherwise they will be deleted after the PDF is generated.
+
 #### Optimising SVGs
 
 This script will remove text SVGs which is useful for thenounproject which include attribution text in their SVGs. Next it will ensure the drawing is fit to page as once we've removed the text the SVG may not be centred on the page. Finally it will optimise the SVG with [SVGO](https://svgo.dev/) (Node) to reduce file size.

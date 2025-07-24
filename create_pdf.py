@@ -42,6 +42,13 @@ parser.add_argument(
     default=None,
     help="List of systems to process (default: all systems in GameCovers directory)",
 )
+# Add argument to keep the temporary files
+parser.add_argument(
+    "--keep",
+    action="store_true",
+    default=False,
+    help="Keep temporary files after processing",
+)
 
 # Set up crop marks and outlines based on arguments
 print_outlines = False
@@ -262,5 +269,5 @@ if card_images:
 
 # Clean up temporary files
 tmp_dir = "tmp_artwork"
-if os.path.exists(tmp_dir):
+if os.path.exists(tmp_dir) and not args.keep:
     shutil.rmtree(tmp_dir)
