@@ -26,7 +26,15 @@ You will need Python installed and to run `pip install -r requirements.txt` to i
    - This will create a PDF file named `output.pdf` in the current directory.
    - The PDF will contain all game covers layed out in a grid format, ready for printing on A4 paper.
 
-> You can enable Crop Marks, Outline or Both by passing the `--crop`, `--outline` or `--both` flags respectively.
+##### Configuring
+
+You can enable Crop Marks, Outline or Both by passing the `--crop`, `--outline` or `--both` flags respectively.
+
+If you want to print directly on to the cards you can use the `--full` flag to generate a PDF with the full card size.
+
+To limit the number of cards processed use the `--limit` flag followed by a number, e.g. `--limit 20`, passing `--limit` without a number will default to 10.
+
+Limiting systems to process is done by passing the `--systems` flag followed by the system names, e.g. `--systems snes nes`.
 
 #### Optimising SVGs
 
