@@ -1,3 +1,6 @@
 lxml==6.0.0
 pillow==11.3.0
 svgpathtools==1.7.1
+reportlab==4.4.2
+yaspin==3.1.0
+cairosvg==2.8.2
