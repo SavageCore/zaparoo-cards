@@ -24,10 +24,20 @@ parser.add_argument(
 )
 # Add argument to specify full card print without the white border, for printing directly on cards
 parser.add_argument("--full", action="store_true", help="Enable full card print")
+# Add argurment to limit the number of cards to process for testing purposes
+parser.add_argument(
+    "--limit",
+    type=int,
+    nargs="?",
+    const=10,
+    default=None,
+    help="Limit the number of cards to process (default: 10 if no value specified)",
+)
 
 # Set up crop marks and outlines based on arguments
 print_outlines = False
 cut_marks = None
+full_print = False
 
 args = parser.parse_args()
 if (args.crop and args.outline) or args.both:
@@ -211,6 +221,11 @@ for filename in os.listdir("tmp_artwork"):
         card_path = os.path.join("tmp_artwork", filename)
         if os.path.isfile(card_path):
             card_images.append(card_path)
+
+# Limit to specified number of cards for testing purposes
+if args.limit is not None:
+    print(f"Limiting to {args.limit} cards for testing.")
+    card_images = card_images[: args.limit]
 
 # Create a PDF with all card images
 if card_images:
