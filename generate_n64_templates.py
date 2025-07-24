@@ -25,7 +25,7 @@ def create_n64_svg(base_svg_path: str, output_dir, colors: dict):
     output_dir.mkdir(exist_ok=True)
 
     for color_name, (cart_color, text_color, shade_color) in colors.items():
-        output_path = output_dir / Path(f"hucard_n64_{color_name.lower()}.svg")
+        output_path = output_dir / Path(f"n64_{color_name.lower()}.svg")
         shutil.copy(base_svg, output_path)
 
         parser = etree.XMLParser(remove_blank_text=True)
@@ -123,7 +123,7 @@ def export_pngs():
     out_path.mkdir(parents=True, exist_ok=True)
     exported = []
 
-    for svg_file in Path("Cards").glob("hucard_n64*.svg"):
+    for svg_file in Path("Cards").glob("n64*.svg"):
         png_file = out_path / (svg_file.stem + ".png")
         subprocess.run(
             [
@@ -141,7 +141,7 @@ def export_pngs():
 
 
 def main():
-    base_svg_path = "Cards/hucard_n64.svg"
+    base_svg_path = "Cards/n64.svg"
     output_dir = "Cards"
     created = create_n64_svg(base_svg_path, output_dir, cartridge_colors)
     print("Created the following SVG files:")

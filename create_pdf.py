@@ -1,218 +1,225 @@
-import math
+import argparse
+import base64
+import hashlib
+import json
+import os
 
-from reportlab.lib.pagesizes import A4  # type: ignore
-from reportlab.pdfgen import canvas  # type: ignore
-from reportlab.lib.colors import black  # type: ignore
+from cairosvg import svg2png  # type: ignore
+from lxml import etree
+from PIL import Image
+from svgpathtools import parse_path  # type: ignore
+from yaspin import yaspin
 
+from utils.prepare_pdf import prepare_pdf  # type: ignore
+
+# Base directories
+cards_dir = "Cards"
 covers_dir = "GameCovers"
-artwork_dir = "tmp_artwork"
+
+parser = argparse.ArgumentParser(description="Generate PDF with game covers.")
+parser.add_argument("--crop", action="store_true", help="Enable crop marks")
+parser.add_argument("--outline", action="store_true", help="Enable outline")
+parser.add_argument(
+    "--both", action="store_true", help="Enable both crop marks and outline"
+)
+
+# Set up crop marks and outlines based on arguments
+print_outlines = False
+cut_marks = None
+
+args = parser.parse_args()
+if (args.crop and args.outline) or args.both:
+    cut_marks = "crop"
+    print_outlines = True
+elif args.crop:
+    cut_marks = "crop"
+elif args.outline:
+    print_outlines = True
+else:
+    cut_marks = None
 
 
-def from_mm_to_point(x):
-    """Convert millimeters to points."""
-    return (x / 25.4) * 72
+def get_template_path(game, system):
+    config_path = os.path.join(covers_dir, system, f"{game}.json")
+    template = f"{system}.svg"
+
+    if os.path.exists(config_path):
+        with open(config_path, "r") as f:
+            config = json.load(f)
+            if "template" in config:
+                template = config["template"]
+
+    return os.path.join(cards_dir, template)
 
 
-def from_pixels_to_point(x):
-    """Convert pixels to points (assuming 300 DPI)."""
-    return (x / 300) * 72
+def get_path_bbox(svg_path):
+    # Parse the SVG and get the path's bounding box
+    tree = etree.parse(svg_path)
+    root = tree.getroot()
+    nsmap = {k if k else "svg": v for k, v in root.nsmap.items()}
+
+    def xpath(path):
+        return root.xpath(path, namespaces=nsmap)
+
+    path_el = xpath(".//svg:path[@inkscape:label='Artwork-Frame1']")
+    if not path_el:
+        raise ValueError("Artwork-Frame1 not found in SVG.")
+    d = path_el[0].attrib["d"]
+    # Use svgpathtools to get the bounding box
+    path = parse_path(d)
+    xmin, xmax, ymin, ymax = path.bbox()
+    return xmin, ymin, xmax, ymax
 
 
-def prepare_pdf(cards, layout="vertical", print_outlines=False, cut_marks=None):
-    grid_size = [0, 0]
-    left_margin = 3
-    top_margin = 10
-    columns = 0
-    rows = 0
-    right_margin = 3
-    bottom_margin = 5
-    _tmp_columns = 0
-    _tmp_rows = 0
-    _tmp_grid_size = [0, 0]
+def replace_path_with_image(svg_path, image_path):
+    # Load SVG using lxml
+    parser = etree.XMLParser(remove_blank_text=True)
+    tree = etree.parse(svg_path, parser)
+    root = tree.getroot()
 
-    c = canvas.Canvas("output.pdf", pagesize=A4)
-    paper_width_in_pt = A4[0]  # 595.27 points
-    paper_height_in_pt = A4[1]  # 841.89 points
-    top_margin_in_pt = from_mm_to_point(top_margin)
-    left_margin_in_pt = from_mm_to_point(left_margin)
-    right_margin_in_pt = from_mm_to_point(right_margin)
-    bottom_margin_in_pt = from_mm_to_point(bottom_margin)
+    # Namespace handling
+    nsmap = {k if k else "svg": v for k, v in root.nsmap.items()}
+    svg_ns = nsmap["svg"]
+    xlink_ns = nsmap.get("xlink", "http://www.w3.org/1999/xlink")
 
-    width_in_pt = from_pixels_to_point(1004)  # 240.96 points (vertical: 153.12)
-    height_in_pt = from_pixels_to_point(638)  # 153.12 points (vertical: 240.96)
-    avail_paper_width = paper_width_in_pt - left_margin_in_pt - right_margin_in_pt
-    avail_paper_height = paper_height_in_pt - top_margin_in_pt - bottom_margin_in_pt
+    def xpath(path):
+        return root.xpath(path, namespaces=nsmap)
 
-    neutral_template = layout
+    # Hide inkscape:label="placeholder"
+    placeholder_elements = xpath(".//svg:image[@inkscape:label='placeholder']")
+    for elem in placeholder_elements:
+        style = elem.attrib.get("style", "")
+        new_style = style.replace("display:inline", "display:none").strip("; ")
+        elem.attrib["style"] = new_style
 
-    if _tmp_columns == 0 or _tmp_rows == 0:
-        possible_rows = int(avail_paper_height / height_in_pt)
-        possible_columns = int(avail_paper_width / width_in_pt)
-        straight_labels = possible_rows * possible_columns
-        possible_rows_rotated = int(avail_paper_height / width_in_pt)
-        possible_columns_rotated = int(avail_paper_width / height_in_pt)
-        rotated_labels = possible_rows_rotated * possible_columns_rotated
+    # Find the path to replace
+    artwork_path = xpath(".//svg:path[@id='Artwork-Frame']")
+    if not artwork_path:
+        print("Artwork path not found.")
+        return
 
-        if straight_labels == rotated_labels:
-            margins_w = avail_paper_width - possible_columns * width_in_pt
-            margins_h = avail_paper_height - possible_rows * height_in_pt
-            margins_w_r = avail_paper_width - possible_columns_rotated * height_in_pt
-            margins_h_r = avail_paper_height - possible_rows_rotated * width_in_pt
+    elem = artwork_path[0]
+    parent = elem.getparent()
 
-            if abs(margins_w - margins_h) > abs(margins_w_r - margins_h_r):
-                rows = possible_rows_rotated
-                columns = possible_columns_rotated
-                neutral_template = "vertical"
-            else:
-                rows = possible_rows
-                columns = possible_columns
-        elif straight_labels > rotated_labels:
-            rows = possible_rows
-            columns = possible_columns
-        else:
-            neutral_template = "vertical"
-            rows = possible_rows_rotated
-            columns = possible_columns_rotated
+    xmin, ymin, xmax, ymax = get_path_bbox(svg_path)
+    frame_width = int(xmax - xmin) - 4
 
-    if neutral_template == "vertical":
-        width_in_pt, height_in_pt = height_in_pt, width_in_pt
+    # Get document width from viewBox or width attribute
+    doc_width = frame_width  # Default to frame_width as fallback
+    if "viewBox" in root.attrib:
+        viewbox = root.attrib["viewBox"].split()
+        if len(viewbox) >= 3:
+            doc_width = float(viewbox[2])  # Width is the third value in viewBox
+    elif "width" in root.attrib:
+        width_str = root.attrib["width"]
+        if width_str.endswith("px"):
+            doc_width = float(width_str.replace("px", ""))
 
-    grid_size = [
-        from_mm_to_point(_tmp_grid_size[0]),
-        from_mm_to_point(_tmp_grid_size[1]),
-    ]
-    if grid_size[0] == 0:
-        grid_size[0] = avail_paper_width / columns
-        grid_size[1] = avail_paper_height / rows
+    x = (doc_width - frame_width) / 2  # Center frame within document
+    y = 252.454  # Exact y from Inkscape
 
-    labels_per_page = rows * columns
+    img = Image.open(image_path)
+    img_filename = os.path.basename(image_path)
 
-    # Crop marks helpers - sets to store unique x and y positions
-    cut_helper_x = set()
-    cut_helper_y = set()
+    img_hash = hashlib.md5(img_filename.encode()).hexdigest()
+    if not os.path.exists("tmp_artwork"):
+        os.makedirs("tmp_artwork")
 
-    def make_crop_marks():
-        """Draw crop marks at collected positions"""
-        c.setLineWidth(0.2)
-        c.setStrokeColor(black)
+    if os.path.exists(f"tmp_artwork/temp_{img_hash}.svg"):
+        print(f"Using cached SVG for {img_filename}")
+        return
 
-        # Vertical lines at x positions
-        for x_value in cut_helper_x:
-            c.line(
-                x_value,
-                paper_height_in_pt - top_margin_in_pt,
-                x_value,
-                paper_height_in_pt,
-            )  # Top
-            c.line(x_value, 0, x_value, top_margin_in_pt)  # Bottom
+    img_width, img_height = img.size
 
-        # Horizontal lines at y positions
-        for y_value in cut_helper_y:
-            c.line(
-                paper_width_in_pt - left_margin_in_pt,
-                y_value,
-                paper_width_in_pt,
-                y_value,
-            )  # Right edge inward
-            c.line(0, y_value, left_margin_in_pt, y_value)  # Left edge outward
+    # Scale image vertically to match the fixed height of 721 px
+    target_height = 721
+    scale = target_height / img_height
+    new_height = int(target_height)
+    new_width = int(img_width * scale)
 
-        cut_helper_x.clear()
-        cut_helper_y.clear()
+    img_resized = img.resize((new_width, new_height), Image.Resampling.BICUBIC)
 
-    # Process cards
-    for page_idx in range(math.ceil(len(cards) / labels_per_page)):
-        for idx in range(labels_per_page):
-            card_idx = page_idx * labels_per_page + idx
-            if card_idx >= len(cards):
-                break
-            row = idx // columns
-            col = idx % columns
-            if row >= rows:
-                continue
+    # Create a new image with frame_width and target_height, filling with black
+    final_img = Image.new("RGBA", (frame_width, int(target_height)), (0, 0, 0, 255))
+    paste_x = (frame_width - new_width) // 2  # Center within frame width
+    paste_y = 0  # Align with top
+    final_img.paste(img_resized, (paste_x, paste_y))
 
-            x = left_margin_in_pt + col * grid_size[0]
-            y = paper_height_in_pt - top_margin_in_pt - (row + 1) * grid_size[1]
+    # Save the final image
+    final_img.save(f"tmp_artwork/temp_{img_hash}.png", "PNG")
 
-            # Apply scaling for border
-            scale_factor = 0.99
-            scaled_width = width_in_pt * scale_factor
-            scaled_height = height_in_pt * scale_factor
-            padding_x = (width_in_pt - scaled_width) / 2
-            padding_y = (height_in_pt - scaled_height) / 2
+    # Insert <image> element with correct x, y, width, height
+    image_el = etree.Element(f"{{{svg_ns}}}image", nsmap=nsmap)
+    image_el.set("id", "Cover-Art")
+    image_el.set("x", str(x))
+    image_el.set("y", str(y - 1))
+    image_el.set("width", str(frame_width))
+    image_el.set("height", str(target_height))  # Use exact height
+    with open(f"tmp_artwork/temp_{img_hash}.png", "rb") as img:
+        image_data = img.read()
+    image_data_base64 = base64.b64encode(image_data).decode("utf-8")
+    image_el.set(f"{{{xlink_ns}}}href", f"data:image/png;base64,{image_data_base64}")
+    image_el.set("preserveAspectRatio", "xMidYMid slice")
 
-            # Collect crop mark positions
-            if cut_marks == "crop":
-                if neutral_template == "vertical":
-                    # Card corners after 270-degree rotation
-                    center_x = x + grid_size[0] / 2
-                    center_y = y + grid_size[1] / 2
-                    # Top-left corner: (-width_in_pt / 2, -height_in_pt / 2) after rotation
-                    tl_x = center_x - height_in_pt / 2
-                    tl_y = center_y + width_in_pt / 2
-                    # Top-right corner: (-width_in_pt / 2, height_in_pt / 2)
-                    tr_x = center_x + height_in_pt / 2
-                    tr_y = center_y + width_in_pt / 2
-                    # Bottom-left corner: (width_in_pt / 2, -height_in_pt / 2)
-                    bl_x = center_x - height_in_pt / 2
-                    bl_y = center_y - width_in_pt / 2
-                    # Bottom-right corner: (width_in_pt / 2, height_in_pt / 2)
-                    br_x = center_x + height_in_pt / 2
-                    br_y = center_y - width_in_pt / 2
-                    cut_helper_x.update([tl_x, tr_x, bl_x, br_x])
-                    cut_helper_y.update([tl_y, tr_y, bl_y, br_y])
+    # Remove the temporary image file
+    os.remove(f"tmp_artwork/temp_{img_hash}.png")
+
+    parent.replace(elem, image_el)
+
+    # Save the modified SVG
+    temp_svg_path = f"tmp_artwork/temp_{img_hash}.svg"
+    tree.write(temp_svg_path, pretty_print=True, xml_declaration=True, encoding="UTF-8")
+
+    # Convert SVG to PNG using CairoSVG
+    output_png_path = f"tmp_artwork/temp_{img_hash}.png"
+    svg2png(url=temp_svg_path, write_to=output_png_path, background_color="white")
+
+    return img_hash
+
+
+# Create cards from templates and covers
+for system in os.listdir(covers_dir):
+    system_path = os.path.join(covers_dir, system)
+    if os.path.isdir(system_path):
+        for filename in os.listdir(system_path):
+            if filename.lower().endswith((".jpg", ".jpeg")):
+                game = os.path.splitext(filename)[0]
+                template_path = get_template_path(game, system)
+                print("")
+                print(f"Processing {game} on {system}")
+                print(f"Template path: {template_path}")
+                cover_path = os.path.join(system_path, filename)
+                if os.path.exists(template_path) and os.path.exists(cover_path):
+                    replace_path_with_image(template_path, cover_path)
                 else:
-                    cut_helper_x.update([x, x + width_in_pt])
-                    cut_helper_y.update([y, y + height_in_pt])
+                    print(f"Template or cover image not found for {game} on {system}")
 
-            c.saveState()
+                print("")
 
-            if neutral_template == "vertical":
-                c.translate(x + grid_size[0] / 2, y + grid_size[1] / 2)
-                c.rotate(270)
+card_images = []
 
-                c.drawImage(
-                    cards[card_idx],
-                    -scaled_width / 2,
-                    -scaled_height / 2,
-                    width=scaled_width,
-                    height=scaled_height,
-                )
+# Collect card images from the temporary artwork directory
+for filename in os.listdir("tmp_artwork"):
+    if filename.endswith((".png")):
+        card_path = os.path.join("tmp_artwork", filename)
+        if os.path.isfile(card_path):
+            card_images.append(card_path)
 
-                if print_outlines:
-                    c.setStrokeColor(black)
-                    c.setLineWidth(0.2)
-                    c.roundRect(
-                        -width_in_pt / 2,
-                        -height_in_pt / 2,
-                        width_in_pt,
-                        height_in_pt,
-                        radius=35 / 4,
-                    )
-            else:
-                c.drawImage(
-                    cards[card_idx],
-                    x + padding_x,
-                    y + padding_y,
-                    width=scaled_width,
-                    height=scaled_height,
-                )
+# Create a PDF with all card images
+if card_images:
+    with yaspin(text="Generating PDF with card images...", color="cyan") as spinner:
+        try:
+            prepare_pdf(card_images, print_outlines=print_outlines, cut_marks=cut_marks)
+            # prepare_pdf(card_images, print_outlines=False)
+            spinner.ok("✅ ")
+        except Exception as e:
+            spinner.fail("💥 ")
+            print(f"Failed to generate PDF: {e}")
 
-                if print_outlines:
-                    c.setStrokeColor(black)
-                    c.setLineWidth(0.2)
-                    c.roundRect(
-                        x + padding_x,
-                        y + padding_y,
-                        width_in_pt,
-                        height_in_pt,
-                        radius=35 / 4,
-                    )
-
-            c.restoreState()
-
-        if cut_marks == "crop":
-            make_crop_marks()
-
-        c.showPage()
-
-    c.save()
+# Clean up temporary files
+# tmp_dir = "tmp_artwork"
+# if os.path.exists(tmp_dir):
+#     for file in os.listdir(tmp_dir):
+#         file_path = os.path.join(tmp_dir, file)
+#         if os.path.isfile(file_path):
+#             os.remove(file_path)
