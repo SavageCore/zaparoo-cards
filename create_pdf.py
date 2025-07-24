@@ -33,6 +33,14 @@ parser.add_argument(
     default=None,
     help="Limit the number of cards to process (default: 10 if no value specified)",
 )
+# Add argument to specify list of systems to process
+parser.add_argument(
+    "--systems",
+    type=str,
+    nargs="*",
+    default=None,
+    help="List of systems to process (default: all systems in GameCovers directory)",
+)
 
 # Set up crop marks and outlines based on arguments
 print_outlines = False
@@ -196,6 +204,8 @@ def replace_path_with_image(svg_path, image_path):
 
 # Create cards from templates and covers
 for system in os.listdir(covers_dir):
+    if args.systems and system not in args.systems:
+        continue
     system_path = os.path.join(covers_dir, system)
     if os.path.isdir(system_path):
         for filename in os.listdir(system_path):
