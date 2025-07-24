@@ -3,6 +3,7 @@ import base64
 import hashlib
 import json
 import os
+import shutil
 
 from cairosvg import svg2png  # type: ignore
 from lxml import etree
@@ -150,7 +151,7 @@ def replace_path_with_image(svg_path, image_path):
     if not os.path.exists("tmp_artwork"):
         os.makedirs("tmp_artwork")
 
-    if os.path.exists(f"tmp_artwork/temp_{img_hash}.svg"):
+    if os.path.exists(f"tmp_artwork/temp_{img_filename}.svg"):
         print(f"Using cached SVG for {img_filename}")
         return
 
@@ -191,15 +192,19 @@ def replace_path_with_image(svg_path, image_path):
 
     parent.replace(elem, image_el)
 
+    # Create system directory if it doesn't exist
+    if not os.path.exists(f"tmp_artwork/{system}"):
+        os.makedirs(f"tmp_artwork/{system}")
+
     # Save the modified SVG
-    temp_svg_path = f"tmp_artwork/temp_{img_hash}.svg"
+    temp_svg_path = f"tmp_artwork/{system}/temp_{img_filename}.svg"
     tree.write(temp_svg_path, pretty_print=True, xml_declaration=True, encoding="UTF-8")
 
     # Convert SVG to PNG using CairoSVG
-    output_png_path = f"tmp_artwork/temp_{img_hash}.png"
+    output_png_path = f"tmp_artwork/{system}/temp_{img_filename}.png"
     svg2png(url=temp_svg_path, write_to=output_png_path, background_color="white")
 
-    return img_hash
+    return img_filename
 
 
 # Create cards from templates and covers
@@ -225,12 +230,14 @@ for system in os.listdir(covers_dir):
 
 card_images = []
 
-# Collect card images from the temporary artwork directory
-for filename in os.listdir("tmp_artwork"):
-    if filename.endswith((".png")):
-        card_path = os.path.join("tmp_artwork", filename)
-        if os.path.isfile(card_path):
-            card_images.append(card_path)
+# Collect card images from the temporary artwork directory to prepare for PDF generation
+# Ensure they're alphabetically sorted by system and game name
+for system in os.listdir("tmp_artwork"):
+    system_path = os.path.join("tmp_artwork", system)
+    if os.path.isdir(system_path):
+        for filename in sorted(os.listdir(system_path)):
+            if filename.lower().endswith(".png"):
+                card_images.append(os.path.join(system_path, filename))
 
 # Limit to specified number of cards for testing purposes
 if args.limit is not None:
@@ -256,8 +263,4 @@ if card_images:
 # Clean up temporary files
 tmp_dir = "tmp_artwork"
 if os.path.exists(tmp_dir):
-    for filename in os.listdir(tmp_dir):
-        file_path = os.path.join(tmp_dir, filename)
-        if os.path.isfile(file_path):
-            os.remove(file_path)
-    os.rmdir(tmp_dir)
+    shutil.rmtree(tmp_dir)
