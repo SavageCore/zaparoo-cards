@@ -182,14 +182,12 @@ for filename in os.listdir("tmp_artwork"):
         if os.path.isfile(card_path):
             card_images.append(card_path)
 
-# DEBUG: Limit the number of card images for testing
-card_images = card_images[:10]  # Uncomment to limit for testing
-
 # Create a PDF with all card images
 if card_images:
     with yaspin(text="Generating PDF with card images...", color="cyan") as spinner:
         try:
             prepare_pdf(card_images, print_outlines=False, cut_marks="crop")
+            # prepare_pdf(card_images, print_outlines=False)
             spinner.ok("✅ ")
         except Exception as e:
             spinner.fail("💥 ")
