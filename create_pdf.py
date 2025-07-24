@@ -254,9 +254,10 @@ if card_images:
             print(f"Failed to generate PDF: {e}")
 
 # Clean up temporary files
-# tmp_dir = "tmp_artwork"
-# if os.path.exists(tmp_dir):
-#     for file in os.listdir(tmp_dir):
-#         file_path = os.path.join(tmp_dir, file)
-#         if os.path.isfile(file_path):
-#             os.remove(file_path)
+tmp_dir = "tmp_artwork"
+if os.path.exists(tmp_dir):
+    for filename in os.listdir(tmp_dir):
+        file_path = os.path.join(tmp_dir, filename)
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+    os.rmdir(tmp_dir)
