@@ -18,7 +18,9 @@ def from_pixels_to_point(x):
     return (x / 300) * 72
 
 
-def prepare_pdf(cards, layout="vertical", print_outlines=False, cut_marks=None):
+def prepare_pdf(
+    cards, layout="vertical", print_outlines=False, cut_marks=None, full_print=False
+):
     grid_size = [0, 0]
     left_margin = 3
     top_margin = 10
@@ -87,7 +89,7 @@ def prepare_pdf(cards, layout="vertical", print_outlines=False, cut_marks=None):
 
     labels_per_page = rows * columns
 
-    # Crop marks helpers - sets to store unique x and y positions
+    # Crop mark helpers - sets to store unique x and y positions
     cut_helper_x = set()
     cut_helper_y = set()
 
@@ -133,80 +135,57 @@ def prepare_pdf(cards, layout="vertical", print_outlines=False, cut_marks=None):
             x = left_margin_in_pt + col * grid_size[0]
             y = paper_height_in_pt - top_margin_in_pt - (row + 1) * grid_size[1]
 
-            # Apply scaling for border
-            scale_factor = 0.99
-            scaled_width = width_in_pt * scale_factor
-            scaled_height = height_in_pt * scale_factor
-            padding_x = (width_in_pt - scaled_width) / 2
-            padding_y = (height_in_pt - scaled_height) / 2
+            print_width = width_in_pt
+            print_height = height_in_pt
+            if not full_print:
+                # Apply scaling for border
+                scale_factor = 0.99
+                print_width = width_in_pt * scale_factor
+                print_height = height_in_pt * scale_factor
 
             # Collect crop mark positions
             if cut_marks == "crop":
-                if neutral_template == "vertical":
-                    # Card corners after 270-degree rotation
-                    center_x = x + grid_size[0] / 2
-                    center_y = y + grid_size[1] / 2
-                    # Top-left corner: (-width_in_pt / 2, -height_in_pt / 2) after rotation
-                    tl_x = center_x - height_in_pt / 2
-                    tl_y = center_y + width_in_pt / 2
-                    # Top-right corner: (-width_in_pt / 2, height_in_pt / 2)
-                    tr_x = center_x + height_in_pt / 2
-                    tr_y = center_y + width_in_pt / 2
-                    # Bottom-left corner: (width_in_pt / 2, -height_in_pt / 2)
-                    bl_x = center_x - height_in_pt / 2
-                    bl_y = center_y - width_in_pt / 2
-                    # Bottom-right corner: (width_in_pt / 2, height_in_pt / 2)
-                    br_x = center_x + height_in_pt / 2
-                    br_y = center_y - width_in_pt / 2
-                    cut_helper_x.update([tl_x, tr_x, bl_x, br_x])
-                    cut_helper_y.update([tl_y, tr_y, bl_y, br_y])
-                else:
-                    cut_helper_x.update([x, x + width_in_pt])
-                    cut_helper_y.update([y, y + height_in_pt])
+                # Card corners after 270-degree rotation
+                center_x = x + grid_size[0] / 2
+                center_y = y + grid_size[1] / 2
+                # Top-left corner: (-width_in_pt / 2, -height_in_pt / 2) after rotation
+                tl_x = center_x - height_in_pt / 2
+                tl_y = center_y + width_in_pt / 2
+                # Top-right corner: (-width_in_pt / 2, height_in_pt / 2)
+                tr_x = center_x + height_in_pt / 2
+                tr_y = center_y + width_in_pt / 2
+                # Bottom-left corner: (width_in_pt / 2, -height_in_pt / 2)
+                bl_x = center_x - height_in_pt / 2
+                bl_y = center_y - width_in_pt / 2
+                # Bottom-right corner: (width_in_pt / 2, height_in_pt / 2)
+                br_x = center_x + height_in_pt / 2
+                br_y = center_y - width_in_pt / 2
+                cut_helper_x.update([tl_x, tr_x, bl_x, br_x])
+                cut_helper_y.update([tl_y, tr_y, bl_y, br_y])
 
             c.saveState()
 
-            if neutral_template == "vertical":
-                c.translate(x + grid_size[0] / 2, y + grid_size[1] / 2)
-                c.rotate(270)
+            c.translate(x + grid_size[0] / 2, y + grid_size[1] / 2)
+            c.rotate(270)
 
-                c.drawImage(
-                    cards[card_idx],
-                    -scaled_width / 2,
-                    -scaled_height / 2,
-                    width=scaled_width,
-                    height=scaled_height,
+            c.drawImage(
+                cards[card_idx],
+                -print_width / 2,
+                -print_height / 2,
+                width=print_width,
+                height=print_height,
+            )
+
+            if print_outlines:
+                c.setStrokeColor(black)
+                c.setLineWidth(0.2)
+                c.roundRect(
+                    -width_in_pt / 2,
+                    -height_in_pt / 2,
+                    width_in_pt,
+                    height_in_pt,
+                    radius=35 / 4,
                 )
-
-                if print_outlines:
-                    c.setStrokeColor(black)
-                    c.setLineWidth(0.2)
-                    c.roundRect(
-                        -width_in_pt / 2,
-                        -height_in_pt / 2,
-                        width_in_pt,
-                        height_in_pt,
-                        radius=35 / 4,
-                    )
-            else:
-                c.drawImage(
-                    cards[card_idx],
-                    x + padding_x,
-                    y + padding_y,
-                    width=scaled_width,
-                    height=scaled_height,
-                )
-
-                if print_outlines:
-                    c.setStrokeColor(black)
-                    c.setLineWidth(0.2)
-                    c.roundRect(
-                        x + padding_x,
-                        y + padding_y,
-                        width_in_pt,
-                        height_in_pt,
-                        radius=35 / 4,
-                    )
 
             c.restoreState()
 

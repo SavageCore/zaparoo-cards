@@ -22,6 +22,8 @@ parser.add_argument("--outline", action="store_true", help="Enable outline")
 parser.add_argument(
     "--both", action="store_true", help="Enable both crop marks and outline"
 )
+# Add argument to specify full card print without the white border, for printing directly on cards
+parser.add_argument("--full", action="store_true", help="Enable full card print")
 
 # Set up crop marks and outlines based on arguments
 print_outlines = False
@@ -37,6 +39,11 @@ elif args.outline:
     print_outlines = True
 else:
     cut_marks = None
+
+if args.full:
+    full_print = True
+    cut_marks = None
+    print_outlines = False
 
 
 def get_template_path(game, system):
@@ -209,7 +216,12 @@ for filename in os.listdir("tmp_artwork"):
 if card_images:
     with yaspin(text="Generating PDF with card images...", color="cyan") as spinner:
         try:
-            prepare_pdf(card_images, print_outlines=print_outlines, cut_marks=cut_marks)
+            prepare_pdf(
+                card_images,
+                print_outlines=print_outlines,
+                cut_marks=cut_marks,
+                full_print=full_print,
+            )
             # prepare_pdf(card_images, print_outlines=False)
             spinner.ok("✅ ")
         except Exception as e:
