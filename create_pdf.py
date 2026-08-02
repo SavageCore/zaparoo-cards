@@ -94,9 +94,12 @@ def get_path_bbox(svg_path):
     def xpath(path):
         return root.xpath(path, namespaces=nsmap)
 
+    # Either Artwork-Frame1 or Artwork-Frame depending on the SVG structure
     path_el = xpath(".//svg:path[@inkscape:label='Artwork-Frame1']")
     if not path_el:
-        raise ValueError("Artwork-Frame1 not found in SVG.")
+        path_el = xpath(".//svg:path[@id='Artwork-Frame']")
+    if not path_el:
+        raise ValueError("Artwork-Frame1 or Artwork-Frame not found in SVG.")
     d = path_el[0].attrib["d"]
     # Use svgpathtools to get the bounding box
     path = parse_path(d)
@@ -125,8 +128,12 @@ def replace_path_with_image(svg_path, image_path):
         new_style = style.replace("display:inline", "display:none").strip("; ")
         elem.attrib["style"] = new_style
 
-    # Find the path to replace
-    artwork_path = xpath(".//svg:path[@id='Artwork-Frame']")
+    # Find the path to replace, if Artwork-Frame1 does not exist then the BG is Artwork-Frame-bg, otherwise the BG is Artwork-Frame
+    artwork_path = xpath(".//svg:path[@inkscape:label='Artwork-Frame1']")
+    if not artwork_path:
+        artwork_path = xpath(".//svg:path[@id='Artwork-Frame-bg']")
+    if not artwork_path:
+        artwork_path = xpath(".//svg:path[@id='Artwork-Frame']")
     if not artwork_path:
         print("Artwork path not found.")
         return
