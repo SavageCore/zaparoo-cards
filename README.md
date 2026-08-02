@@ -86,3 +86,5 @@ https://pixabay.com/vectors/gamegear-game-sega-handheld-arcade-3432581/
 https://thenounproject.com/icon/sega-saturn-6123819/
 
 https://thenounproject.com/browse/collection-icon/arcade-machines-2d-39704/
+
+https://archive.org/details/console-logos-professionally-redrawn-plus-official-versions
