@@ -33,6 +33,9 @@ def prepare_pdf(
     _tmp_grid_size = [0, 0]
 
     c = canvas.Canvas("output.pdf", pagesize=A4)
+    c.setCreator("zaparoo-cards")
+    # ReportLab does not expose a public setProducer API; override default producer directly.
+    c._doc.info.producer = "zaparoo-cards"
     paper_width_in_pt = A4[0]  # 595.27 points
     paper_height_in_pt = A4[1]  # 841.89 points
     top_margin_in_pt = from_mm_to_point(top_margin)
