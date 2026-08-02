@@ -1,9 +1,12 @@
 import argparse
 import base64
-import hashlib
 import json
 import os
 import shutil
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
+from io import BytesIO
 
 from cairosvg import svg2png  # type: ignore
 from lxml import etree
@@ -16,6 +19,33 @@ from utils.prepare_pdf import prepare_pdf  # type: ignore
 # Base directories
 cards_dir = "Cards"
 covers_dir = "GameCovers"
+tmp_dir = "tmp_artwork"
+
+FRAME_META_SELECTOR = ".//svg:path[@inkscape:label='Artwork-Frame']"
+ARTWORK_REPLACE_SELECTOR = ".//svg:path[@id='Artwork-Frame-bg' or @inkscape:label='Artwork-Frame-bg']"
+default_cache_dir = os.path.join(".cache", "zaparoo-cards", "rendered")
+
+
+@dataclass(frozen=True)
+class Job:
+    system: str
+    game: str
+    cover_path: str
+    template_path: str
+
+
+@dataclass(frozen=True)
+class TemplateMeta:
+    frame_width: int
+    x: float
+    y: float
+    target_height: int
+
+
+_template_choice_cache: dict[str, str] = {}
+_template_meta_cache: dict[str, TemplateMeta] = {}
+_template_bytes_cache: dict[str, bytes] = {}
+
 
 parser = argparse.ArgumentParser(description="Generate PDF with game covers.")
 parser.add_argument("--crop", action="store_true", help="Enable crop marks")
@@ -23,9 +53,7 @@ parser.add_argument("--outline", action="store_true", help="Enable outline")
 parser.add_argument(
     "--both", action="store_true", help="Enable both crop marks and outline"
 )
-# Add argument to specify full card print without the white border, for printing directly on cards
 parser.add_argument("--full", action="store_true", help="Enable full card print")
-# Add argurment to limit the number of cards to process for testing purposes
 parser.add_argument(
     "--limit",
     type=int,
@@ -34,7 +62,6 @@ parser.add_argument(
     default=None,
     help="Limit the number of cards to process (default: 10 if no value specified)",
 )
-# Add argument to specify list of systems to process
 parser.add_argument(
     "--systems",
     type=str,
@@ -42,239 +69,357 @@ parser.add_argument(
     default=None,
     help="List of systems to process (default: all systems in GameCovers directory)",
 )
-# Add argument to keep the temporary files
 parser.add_argument(
     "--keep",
     action="store_true",
     default=False,
     help="Keep temporary files after processing",
 )
-
-# Set up crop marks and outlines based on arguments
-print_outlines = False
-cut_marks = None
-full_print = False
+parser.add_argument(
+    "--workers",
+    type=int,
+    default=max(1, min(8, os.cpu_count() or 1)),
+    help="Number of parallel workers used for card rendering",
+)
+parser.add_argument(
+    "--no-cache",
+    action="store_true",
+    help="Disable card PNG reuse if existing outputs are already fresh",
+)
+parser.add_argument(
+    "--cache-dir",
+    type=str,
+    default=default_cache_dir,
+    help="Directory used for persistent rendered card cache",
+)
+parser.add_argument(
+    "--render-only",
+    action="store_true",
+    help="Render card PNGs only and skip PDF generation",
+)
+parser.add_argument(
+    "--benchmark",
+    action="store_true",
+    help="Print per-stage timing summary",
+)
 
 args = parser.parse_args()
-if (args.crop and args.outline) or args.both:
-    cut_marks = "crop"
-    print_outlines = True
-elif args.crop:
-    cut_marks = "crop"
-elif args.outline:
-    print_outlines = True
-else:
-    cut_marks = None
 
-if args.full:
-    full_print = True
-    cut_marks = None
+
+def resolve_print_options():
     print_outlines = False
+    cut_marks = None
+    full_print = False
+
+    if (args.crop and args.outline) or args.both:
+        cut_marks = "crop"
+        print_outlines = True
+    elif args.crop:
+        cut_marks = "crop"
+    elif args.outline:
+        print_outlines = True
+
+    if args.full:
+        full_print = True
+        cut_marks = None
+        print_outlines = False
+
+    return print_outlines, cut_marks, full_print
+
+
+def _build_nsmap(root):
+    nsmap = {k if k else "svg": v for k, v in root.nsmap.items()}
+    nsmap.setdefault("svg", "http://www.w3.org/2000/svg")
+    nsmap.setdefault("inkscape", "http://www.inkscape.org/namespaces/inkscape")
+    nsmap.setdefault("xlink", "http://www.w3.org/1999/xlink")
+    return nsmap
+
+
+def _xpath(root, nsmap, path):
+    return root.xpath(path, namespaces=nsmap)
 
 
 def get_template_path(game, system):
     config_path = os.path.join(covers_dir, system, f"{game}.json")
-    template = f"{system}.svg"
-
-    if os.path.exists(config_path):
-        with open(config_path, "r") as f:
-            config = json.load(f)
-            if "template" in config:
-                template = config["template"]
-
+    template = _template_choice_cache.get(config_path)
+    if template is None:
+        template = f"{system}.svg"
+        if os.path.exists(config_path):
+            with open(config_path, "r", encoding="utf-8") as f:
+                config = json.load(f)
+                template = config.get("template", template)
+        _template_choice_cache[config_path] = template
     return os.path.join(cards_dir, template)
 
 
-def get_path_bbox(svg_path):
-    # Parse the SVG and get the path's bounding box
+def get_template_meta(svg_path):
+    cached = _template_meta_cache.get(svg_path)
+    if cached is not None:
+        return cached
+
     tree = etree.parse(svg_path)
     root = tree.getroot()
-    nsmap = {k if k else "svg": v for k, v in root.nsmap.items()}
+    nsmap = _build_nsmap(root)
 
-    def xpath(path):
-        return root.xpath(path, namespaces=nsmap)
+    path_el = _xpath(root, nsmap, FRAME_META_SELECTOR)
 
-    # Either Artwork-Frame1 or Artwork-Frame depending on the SVG structure
-    path_el = xpath(".//svg:path[@inkscape:label='Artwork-Frame1']")
     if not path_el:
-        path_el = xpath(".//svg:path[@id='Artwork-Frame']")
-    if not path_el:
-        raise ValueError("Artwork-Frame1 or Artwork-Frame not found in SVG.")
+        raise ValueError("Artwork frame path not found in SVG")
+
     d = path_el[0].attrib["d"]
-    # Use svgpathtools to get the bounding box
     path = parse_path(d)
-    xmin, xmax, ymin, ymax = path.bbox()
-    return xmin, ymin, xmax, ymax
-
-
-def replace_path_with_image(svg_path, image_path):
-    # Load SVG using lxml
-    parser = etree.XMLParser(remove_blank_text=True)
-    tree = etree.parse(svg_path, parser)
-    root = tree.getroot()
-
-    # Namespace handling
-    nsmap = {k if k else "svg": v for k, v in root.nsmap.items()}
-    svg_ns = nsmap["svg"]
-    xlink_ns = nsmap.get("xlink", "http://www.w3.org/1999/xlink")
-
-    def xpath(path):
-        return root.xpath(path, namespaces=nsmap)
-
-    # Hide inkscape:label="placeholder"
-    placeholder_elements = xpath(".//svg:image[@inkscape:label='placeholder']")
-    for elem in placeholder_elements:
-        style = elem.attrib.get("style", "")
-        new_style = style.replace("display:inline", "display:none").strip("; ")
-        elem.attrib["style"] = new_style
-
-    # Find the path to replace, if Artwork-Frame1 does not exist then the BG is Artwork-Frame-bg, otherwise the BG is Artwork-Frame
-    artwork_path = xpath(".//svg:path[@inkscape:label='Artwork-Frame1']")
-    if not artwork_path:
-        artwork_path = xpath(".//svg:path[@id='Artwork-Frame-bg']")
-    if not artwork_path:
-        artwork_path = xpath(".//svg:path[@id='Artwork-Frame']")
-    if not artwork_path:
-        print("Artwork path not found.")
-        return
-
-    elem = artwork_path[0]
-    parent = elem.getparent()
-
-    xmin, ymin, xmax, ymax = get_path_bbox(svg_path)
+    xmin, xmax, _, _ = path.bbox()
     frame_width = int(xmax - xmin) - 4
 
-    # Get document width from viewBox or width attribute
-    doc_width = frame_width  # Default to frame_width as fallback
+    doc_width = frame_width
     if "viewBox" in root.attrib:
         viewbox = root.attrib["viewBox"].split()
         if len(viewbox) >= 3:
-            doc_width = float(viewbox[2])  # Width is the third value in viewBox
+            doc_width = float(viewbox[2])
     elif "width" in root.attrib:
         width_str = root.attrib["width"]
         if width_str.endswith("px"):
             doc_width = float(width_str.replace("px", ""))
 
-    x = (doc_width - frame_width) / 2  # Center frame within document
-    y = 252.454  # Exact y from Inkscape
+    meta = TemplateMeta(
+        frame_width=frame_width,
+        x=(doc_width - frame_width) / 2,
+        y=252.454,
+        target_height=721,
+    )
+    _template_meta_cache[svg_path] = meta
+    return meta
 
-    img = Image.open(image_path)
-    img_filename = os.path.basename(image_path)
 
-    img_hash = hashlib.md5(img_filename.encode()).hexdigest()
-    if not os.path.exists("tmp_artwork"):
-        os.makedirs("tmp_artwork")
+def _load_template_root(svg_path):
+    svg_bytes = _template_bytes_cache.get(svg_path)
+    if svg_bytes is None:
+        with open(svg_path, "rb") as f:
+            svg_bytes = f.read()
+        _template_bytes_cache[svg_path] = svg_bytes
 
-    if os.path.exists(f"tmp_artwork/temp_{img_filename}.svg"):
-        print(f"Using cached SVG for {img_filename}")
-        return
+    parser_local = etree.XMLParser(remove_blank_text=True)
+    root = etree.fromstring(svg_bytes, parser=parser_local)
+    return root
 
-    img_width, img_height = img.size
 
-    # Scale image vertically to match the fixed height of 721 px
-    target_height = 721
-    scale = target_height / img_height
-    new_height = int(target_height)
-    new_width = int(img_width * scale)
+def _is_fresh_output(output_path, input_paths):
+    if not os.path.exists(output_path):
+        return False
 
-    img_resized = img.resize((new_width, new_height), Image.Resampling.BICUBIC)
+    output_mtime = os.path.getmtime(output_path)
+    for input_path in input_paths:
+        if os.path.getmtime(input_path) > output_mtime:
+            return False
+    return True
 
-    # Create a new image with frame_width and target_height, filling with black
-    final_img = Image.new("RGBA", (frame_width, int(target_height)), (0, 0, 0, 255))
-    paste_x = (frame_width - new_width) // 2  # Center within frame width
-    paste_y = 0  # Align with top
-    final_img.paste(img_resized, (paste_x, paste_y))
 
-    # Save the final image
-    final_img.save(f"tmp_artwork/temp_{img_hash}.png", "PNG")
+def _cache_output_path(job):
+    img_filename = os.path.basename(job.cover_path)
+    img_stem = os.path.splitext(img_filename)[0]
+    system_dir = os.path.join(args.cache_dir, job.system)
+    os.makedirs(system_dir, exist_ok=True)
+    return os.path.join(system_dir, f"temp_{img_stem}.png")
 
-    # Insert <image> element with correct x, y, width, height
+
+def render_card(job, use_cache=True):
+    meta = get_template_meta(job.template_path)
+    output_png_path = _cache_output_path(job)
+
+    if use_cache and _is_fresh_output(output_png_path, [job.cover_path, job.template_path]):
+        return output_png_path, True
+
+    root = _load_template_root(job.template_path)
+    nsmap = _build_nsmap(root)
+    svg_ns = nsmap["svg"]
+    xlink_ns = nsmap["xlink"]
+
+    placeholder_elements = _xpath(root, nsmap, ".//svg:image[@inkscape:label='placeholder']")
+    for elem in placeholder_elements:
+        style = elem.attrib.get("style", "")
+        if "display:inline" in style:
+            elem.attrib["style"] = style.replace("display:inline", "display:none").strip("; ")
+
+    artwork_nodes = _xpath(root, nsmap, ARTWORK_REPLACE_SELECTOR)
+    artwork_element = artwork_nodes[0] if artwork_nodes else None
+
+    if artwork_element is None:
+        raise ValueError(f"Artwork path not found in template {job.template_path}")
+
+    with Image.open(job.cover_path) as img:
+        img_width, img_height = img.size
+        scale = meta.target_height / img_height
+        new_width = int(img_width * scale)
+        img_resized = img.resize((new_width, meta.target_height), Image.Resampling.BICUBIC)
+
+        final_img = Image.new("RGBA", (meta.frame_width, meta.target_height), (0, 0, 0, 255))
+        paste_x = (meta.frame_width - new_width) // 2
+        final_img.paste(img_resized, (paste_x, 0))
+
+    png_buffer = BytesIO()
+    final_img.save(png_buffer, format="PNG")
+    image_data_base64 = base64.b64encode(png_buffer.getvalue()).decode("ascii")
+
     image_el = etree.Element(f"{{{svg_ns}}}image", nsmap=nsmap)
     image_el.set("id", "Cover-Art")
-    image_el.set("x", str(x))
-    image_el.set("y", str(y - 1))
-    image_el.set("width", str(frame_width))
-    image_el.set("height", str(target_height))  # Use exact height
-    with open(f"tmp_artwork/temp_{img_hash}.png", "rb") as img:
-        image_data = img.read()
-    image_data_base64 = base64.b64encode(image_data).decode("utf-8")
+    image_el.set("x", str(meta.x))
+    image_el.set("y", str(meta.y - 1))
+    image_el.set("width", str(meta.frame_width))
+    image_el.set("height", str(meta.target_height))
     image_el.set(f"{{{xlink_ns}}}href", f"data:image/png;base64,{image_data_base64}")
     image_el.set("preserveAspectRatio", "xMidYMid slice")
 
-    # Remove the temporary image file
-    os.remove(f"tmp_artwork/temp_{img_hash}.png")
+    parent = artwork_element.getparent()
+    if parent is None:
+        raise ValueError(f"Artwork parent not found in template {job.template_path}")
+    parent.replace(artwork_element, image_el)
 
-    parent.replace(elem, image_el)
+    svg2png(
+        bytestring=etree.tostring(root, xml_declaration=True, encoding="UTF-8"),
+        write_to=output_png_path,
+        background_color="white",
+    )
 
-    # Create system directory if it doesn't exist
-    if not os.path.exists(f"tmp_artwork/{system}"):
-        os.makedirs(f"tmp_artwork/{system}")
-
-    # Save the modified SVG
-    temp_svg_path = f"tmp_artwork/{system}/temp_{img_filename}.svg"
-    tree.write(temp_svg_path, pretty_print=True, xml_declaration=True, encoding="UTF-8")
-
-    # Convert SVG to PNG using CairoSVG
-    output_png_path = f"tmp_artwork/{system}/temp_{img_filename}.png"
-    svg2png(url=temp_svg_path, write_to=output_png_path, background_color="white")
-
-    return img_filename
+    return output_png_path, False
 
 
-# Create cards from templates and covers
-for system in os.listdir(covers_dir):
-    if args.systems and system not in args.systems:
-        continue
-    system_path = os.path.join(covers_dir, system)
-    if os.path.isdir(system_path):
-        for filename in os.listdir(system_path):
-            if filename.lower().endswith((".jpg", ".jpeg")):
-                game = os.path.splitext(filename)[0]
-                template_path = get_template_path(game, system)
-                print("")
-                print(f"Processing {game} on {system}")
-                print(f"Template path: {template_path}")
-                cover_path = os.path.join(system_path, filename)
-                if os.path.exists(template_path) and os.path.exists(cover_path):
-                    replace_path_with_image(template_path, cover_path)
-                else:
-                    print(f"Template or cover image not found for {game} on {system}")
+def collect_jobs():
+    jobs = []
+    systems = sorted(os.listdir(covers_dir))
+    wanted_systems = set(args.systems) if args.systems else None
 
-                print("")
+    for system in systems:
+        if wanted_systems and system not in wanted_systems:
+            continue
+        system_path = os.path.join(covers_dir, system)
+        if not os.path.isdir(system_path):
+            continue
 
-card_images = []
-
-# Collect card images from the temporary artwork directory to prepare for PDF generation
-# Ensure they're alphabetically sorted by system and game name
-for system in os.listdir("tmp_artwork"):
-    system_path = os.path.join("tmp_artwork", system)
-    if os.path.isdir(system_path):
         for filename in sorted(os.listdir(system_path)):
-            if filename.lower().endswith(".png"):
-                card_images.append(os.path.join(system_path, filename))
+            if not filename.lower().endswith((".jpg", ".jpeg")):
+                continue
 
-# Limit to specified number of cards for testing purposes
-if args.limit is not None:
-    print(f"Limiting to {args.limit} cards for testing.")
-    card_images = card_images[: args.limit]
+            game = os.path.splitext(filename)[0]
+            template_path = get_template_path(game, system)
+            cover_path = os.path.join(system_path, filename)
 
-# Create a PDF with all card images
-if card_images:
-    with yaspin(text="Generating PDF with card images...", color="cyan") as spinner:
+            if os.path.exists(template_path) and os.path.exists(cover_path):
+                jobs.append(
+                    Job(
+                        system=system,
+                        game=game,
+                        cover_path=cover_path,
+                        template_path=template_path,
+                    )
+                )
+            else:
+                print(f"Template or cover image not found for {game} on {system}")
+
+            if args.limit is not None and len(jobs) >= args.limit:
+                return jobs
+
+    return jobs
+
+
+def process_jobs(jobs):
+    card_images = [None] * len(jobs)
+    cached_hits = 0
+    workers = max(1, args.workers)
+
+    with yaspin(text=f"Rendering {len(jobs)} cards...", color="cyan") as spinner:
         try:
-            prepare_pdf(
-                card_images,
-                print_outlines=print_outlines,
-                cut_marks=cut_marks,
-                full_print=full_print,
-            )
-            # prepare_pdf(card_images, print_outlines=False)
+            if workers == 1:
+                for i, job in enumerate(jobs):
+                    output_path, was_cached = render_card(job, use_cache=not args.no_cache)
+                    card_images[i] = output_path
+                    cached_hits += int(was_cached)
+            else:
+                with ThreadPoolExecutor(max_workers=workers) as executor:
+                    future_to_index = {
+                        executor.submit(render_card, job, not args.no_cache): i
+                        for i, job in enumerate(jobs)
+                    }
+                    for future in as_completed(future_to_index):
+                        i = future_to_index[future]
+                        output_path, was_cached = future.result()
+                        card_images[i] = output_path
+                        cached_hits += int(was_cached)
+
             spinner.ok("✅ ")
         except Exception as e:
             spinner.fail("💥 ")
-            print(f"Failed to generate PDF: {e}")
+            raise RuntimeError(f"Failed to render card images: {e}") from e
 
-# Clean up temporary files
-tmp_dir = "tmp_artwork"
-if os.path.exists(tmp_dir) and not args.keep:
-    shutil.rmtree(tmp_dir)
+    print(f"Rendered {len(jobs)} cards ({cached_hits} cached, {len(jobs) - cached_hits} new).")
+    return [path for path in card_images if path is not None]
+
+
+def print_benchmark(stage_times, card_count):
+    total = stage_times.get("total", 0.0)
+    discover = stage_times.get("discover", 0.0)
+    render = stage_times.get("render", 0.0)
+    pdf = stage_times.get("pdf", 0.0)
+    per_card = (render / card_count) if card_count else 0.0
+
+    print("\nBenchmark summary")
+    print(f"- discover: {discover:.3f}s")
+    print(f"- render:   {render:.3f}s ({per_card:.4f}s/card)")
+    print(f"- pdf:      {pdf:.3f}s")
+    print(f"- total:    {total:.3f}s")
+
+
+def main():
+    total_start = time.perf_counter()
+    stage_times = {}
+
+    print_outlines, cut_marks, full_print = resolve_print_options()
+
+    discover_start = time.perf_counter()
+    jobs = collect_jobs()
+    stage_times["discover"] = time.perf_counter() - discover_start
+    if not jobs:
+        print("No valid card images found to process.")
+        return
+
+    os.makedirs(args.cache_dir, exist_ok=True)
+
+    render_start = time.perf_counter()
+    card_images = process_jobs(jobs)
+    stage_times["render"] = time.perf_counter() - render_start
+
+    if args.render_only:
+        print("Skipping PDF generation (--render-only).")
+        stage_times["pdf"] = 0.0
+        stage_times["total"] = time.perf_counter() - total_start
+        if args.benchmark:
+            print_benchmark(stage_times, len(card_images))
+        if os.path.exists(tmp_dir) and not args.keep:
+            shutil.rmtree(tmp_dir)
+        return
+
+    if card_images:
+        pdf_start = time.perf_counter()
+        with yaspin(text="Generating PDF with card images...", color="cyan") as spinner:
+            try:
+                prepare_pdf(
+                    card_images,
+                    print_outlines=print_outlines,
+                    cut_marks=cut_marks,
+                    full_print=full_print,
+                )
+                spinner.ok("✅ ")
+            except Exception as e:
+                spinner.fail("💥 ")
+                print(f"Failed to generate PDF: {e}")
+        stage_times["pdf"] = time.perf_counter() - pdf_start
+
+    if os.path.exists(tmp_dir) and not args.keep:
+        shutil.rmtree(tmp_dir)
+
+    stage_times["total"] = time.perf_counter() - total_start
+    if args.benchmark:
+        print_benchmark(stage_times, len(card_images))
+
+
+if __name__ == "__main__":
+    main()

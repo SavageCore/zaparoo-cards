@@ -38,6 +38,14 @@ Limiting systems to process is done by passing the `--systems` flag followed by 
 
 Passing the `--keep` flag will keep the temporary files created during processing, otherwise they will be deleted after the PDF is generated.
 
+Performance options:
+- Use `--workers N` to render cards in parallel (default is auto-selected based on CPU cores).
+- Rendered card PNGs are cached persistently in `.cache/zaparoo-cards/rendered` by default.
+- Use `--cache-dir <path>` to change where persistent cache files are stored.
+- Use `--render-only` to skip PDF creation when you only want to warm/build the render cache.
+- Use `--benchmark` to print stage timings (discover, render, pdf, total).
+- Use `--no-cache` if you want to force a full re-render.
+
 #### Optimising SVGs
 
 This script will remove text SVGs which is useful for thenounproject which include attribution text in their SVGs. Next it will ensure the drawing is fit to page as once we've removed the text the SVG may not be centred on the page. Finally it will optimise the SVG with [SVGO](https://svgo.dev/) (Node) to reduce file size.
