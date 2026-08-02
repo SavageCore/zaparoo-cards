@@ -36,6 +36,8 @@ To limit the number of cards processed use the `--limit` flag followed by a numb
 
 Limiting systems to process is done by passing the `--systems` flag followed by the system names, e.g. `--systems snes nes`.
 
+Use `--example` to generate `output_example.pdf` with one card per system, and for `n64` one card per available `n64_<colour>.svg` template.
+
 Passing the `--keep` flag will keep the temporary files created during processing, otherwise they will be deleted after the PDF is generated.
 
 Performance options:

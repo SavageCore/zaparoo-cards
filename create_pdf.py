@@ -24,6 +24,7 @@ tmp_dir = "tmp_artwork"
 FRAME_META_SELECTOR = ".//svg:path[@inkscape:label='Artwork-Frame']"
 ARTWORK_REPLACE_SELECTOR = ".//svg:path[@id='Artwork-Frame-bg' or @inkscape:label='Artwork-Frame-bg']"
 default_cache_dir = os.path.join(".cache", "zaparoo-cards", "rendered")
+COVER_EXTENSIONS = (".jpg", ".jpeg", ".png")
 
 
 @dataclass(frozen=True)
@@ -101,6 +102,11 @@ parser.add_argument(
     "--benchmark",
     action="store_true",
     help="Print per-stage timing summary",
+)
+parser.add_argument(
+    "--example",
+    action="store_true",
+    help="Generate output_example.pdf with one card per system and one card per N64 colour template",
 )
 
 args = parser.parse_args()
@@ -217,9 +223,10 @@ def _is_fresh_output(output_path, input_paths):
 def _cache_output_path(job):
     img_filename = os.path.basename(job.cover_path)
     img_stem = os.path.splitext(img_filename)[0]
+    template_stem = os.path.splitext(os.path.basename(job.template_path))[0]
     system_dir = os.path.join(args.cache_dir, job.system)
     os.makedirs(system_dir, exist_ok=True)
-    return os.path.join(system_dir, f"temp_{img_stem}.png")
+    return os.path.join(system_dir, f"temp_{img_stem}__{template_stem}.png")
 
 
 def render_card(job, use_cache=True):
@@ -296,7 +303,7 @@ def collect_jobs():
             continue
 
         for filename in sorted(os.listdir(system_path)):
-            if not filename.lower().endswith((".jpg", ".jpeg")):
+            if not filename.lower().endswith(COVER_EXTENSIONS):
                 continue
 
             game = os.path.splitext(filename)[0]
@@ -317,6 +324,138 @@ def collect_jobs():
 
             if args.limit is not None and len(jobs) >= args.limit:
                 return jobs
+
+    return jobs
+
+
+def _first_cover_file(system_path):
+    for filename in sorted(os.listdir(system_path)):
+        if filename.lower().endswith(COVER_EXTENSIONS):
+            return filename
+    return None
+
+
+def _collect_n64_example_jobs(system_path):
+    jobs = []
+    missing_template_mappings = []
+    covers = [
+        filename
+        for filename in sorted(os.listdir(system_path))
+        if filename.lower().endswith(COVER_EXTENSIONS)
+    ]
+    if not covers:
+        return jobs
+
+    base_jobs_by_template = {}
+    all_cover_jobs = []
+    for filename in covers:
+        game = os.path.splitext(filename)[0]
+        template_path = get_template_path(game, "n64")
+        cover_path = os.path.join(system_path, filename)
+        if os.path.exists(template_path) and os.path.exists(cover_path):
+            job = Job(
+                system="n64",
+                game=game,
+                cover_path=cover_path,
+                template_path=template_path,
+            )
+            all_cover_jobs.append(job)
+            base_jobs_by_template.setdefault(os.path.basename(template_path), []).append(job)
+
+    n64_template_variants = []
+    base_template = "n64.svg"
+    if os.path.exists(os.path.join(cards_dir, base_template)):
+        n64_template_variants.append(base_template)
+
+    n64_template_variants.extend(
+        sorted(
+            filename
+            for filename in os.listdir(cards_dir)
+            if filename.startswith("n64_") and filename.endswith(".svg")
+        )
+    )
+
+    if not n64_template_variants:
+        if base_jobs_by_template:
+            first_template = sorted(base_jobs_by_template.keys())[0]
+            jobs.append(base_jobs_by_template[first_template][0])
+        return jobs
+
+    used_cover_paths = set()
+
+    for template_filename in n64_template_variants:
+        template_path = os.path.join(cards_dir, template_filename)
+        if not os.path.exists(template_path):
+            continue
+
+        matching_jobs = base_jobs_by_template.get(template_filename)
+        if matching_jobs:
+            selected = next(
+                (job for job in matching_jobs if job.cover_path not in used_cover_paths),
+                matching_jobs[0],
+            )
+            used_cover_paths.add(selected.cover_path)
+            jobs.append(selected)
+            continue
+
+        missing_template_mappings.append(template_filename)
+        fallback_source = next(
+            (job for job in all_cover_jobs if job.cover_path not in used_cover_paths),
+            all_cover_jobs[0] if all_cover_jobs else None,
+        )
+        if fallback_source is not None:
+            used_cover_paths.add(fallback_source.cover_path)
+            jobs.append(
+                Job(
+                    system="n64",
+                    game=fallback_source.game,
+                    cover_path=fallback_source.cover_path,
+                    template_path=template_path,
+                )
+            )
+
+    if missing_template_mappings:
+        print(
+            "Warning: no explicit N64 game mapping found for template(s): "
+            + ", ".join(missing_template_mappings)
+            + ". Using fallback games for those colours in --example mode."
+        )
+
+    return jobs
+
+
+def collect_example_jobs():
+    jobs = []
+    systems = sorted(os.listdir(covers_dir))
+
+    for system in systems:
+        system_path = os.path.join(covers_dir, system)
+        if not os.path.isdir(system_path):
+            continue
+
+        if system == "n64":
+            jobs.extend(_collect_n64_example_jobs(system_path))
+            continue
+
+        filename = _first_cover_file(system_path)
+        if not filename:
+            continue
+
+        game = os.path.splitext(filename)[0]
+        template_path = get_template_path(game, system)
+        cover_path = os.path.join(system_path, filename)
+
+        if os.path.exists(template_path) and os.path.exists(cover_path):
+            jobs.append(
+                Job(
+                    system=system,
+                    game=game,
+                    cover_path=cover_path,
+                    template_path=template_path,
+                )
+            )
+        else:
+            print(f"Template or cover image not found for {game} on {system}")
 
     return jobs
 
@@ -373,13 +512,17 @@ def main():
     stage_times = {}
 
     print_outlines, cut_marks, full_print = resolve_print_options()
+    output_pdf_path = "output_example.pdf" if args.example else "output.pdf"
 
     discover_start = time.perf_counter()
-    jobs = collect_jobs()
+    jobs = collect_example_jobs() if args.example else collect_jobs()
     stage_times["discover"] = time.perf_counter() - discover_start
     if not jobs:
         print("No valid card images found to process.")
         return
+
+    if args.example:
+        print(f"Example mode selected {len(jobs)} cards.")
 
     os.makedirs(args.cache_dir, exist_ok=True)
 
@@ -406,6 +549,7 @@ def main():
                     print_outlines=print_outlines,
                     cut_marks=cut_marks,
                     full_print=full_print,
+                    output_path=output_pdf_path,
                 )
                 spinner.ok("✅ ")
             except Exception as e:

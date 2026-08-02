@@ -19,7 +19,12 @@ def from_pixels_to_point(x):
 
 
 def prepare_pdf(
-    cards, layout="vertical", print_outlines=False, cut_marks=None, full_print=False
+    cards,
+    layout="vertical",
+    print_outlines=False,
+    cut_marks=None,
+    full_print=False,
+    output_path="output.pdf",
 ):
     grid_size = [0, 0]
     left_margin = 3
@@ -32,7 +37,7 @@ def prepare_pdf(
     _tmp_rows = 0
     _tmp_grid_size = [0, 0]
 
-    c = canvas.Canvas("output.pdf", pagesize=A4)
+    c = canvas.Canvas(output_path, pagesize=A4)
     c.setCreator("zaparoo-cards")
     # ReportLab does not expose a public setProducer API; override default producer directly.
     c._doc.info.producer = "zaparoo-cards"
