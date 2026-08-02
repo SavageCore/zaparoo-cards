@@ -1,11 +1,12 @@
 import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 from lxml import etree
 
-inkscape_path = r"C:\Program Files\Inkscape\bin\inkscape.exe"
+inkscape_path = "inkscape" if sys.platform != "win32" else r"C:\Program Files\Inkscape\bin\inkscape.exe"
 
 # Define cartridge colours (main, text, shade)
 cartridge_colors = {
