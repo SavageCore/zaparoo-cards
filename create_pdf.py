@@ -26,9 +26,11 @@ ARTWORK_REPLACE_SELECTOR = ".//svg:path[@id='Artwork-Frame-bg' or @inkscape:labe
 default_cache_dir = os.path.join(".cache", "zaparoo-cards", "rendered")
 COVER_EXTENSIONS = (".jpg", ".jpeg", ".png")
 
-# Printed long edge of a card, in 300 DPI pixels. The short edge follows from the
-# template viewBox so the artwork is never stretched.
-CARD_LONG_EDGE_PX = 1004
+# Card media, matching zaparoo-designer's NFCCCsizeCard: 85mm x 54mm. These are
+# the physical card dimensions, so they are deliberately not taken from the
+# template viewBox - the templates are authored at 619x994 and the designer
+# stretches them onto this media.
+CARD_MEDIA_PX = (638, 1004)  # (short edge, long edge) at 300 DPI
 
 
 @dataclass(frozen=True)
@@ -183,21 +185,19 @@ def get_template_meta(svg_path):
     frame_width = int(xmax - xmin) - 4
 
     doc_width = frame_width
-    doc_height = 1.0
     if "viewBox" in root.attrib:
         viewbox = root.attrib["viewBox"].split()
-        if len(viewbox) >= 4:
+        if len(viewbox) >= 3:
             doc_width = float(viewbox[2])
-            doc_height = float(viewbox[3])
     elif "width" in root.attrib:
         width_str = root.attrib["width"]
         if width_str.endswith("px"):
             doc_width = float(width_str.replace("px", ""))
 
-    long_edge_pt = from_pixels_to_point(CARD_LONG_EDGE_PX)
+    short_edge_px, long_edge_px = CARD_MEDIA_PX
     card_size_in_pt = (
-        long_edge_pt * doc_width / doc_height if doc_height else long_edge_pt,
-        long_edge_pt,
+        from_pixels_to_point(short_edge_px),
+        from_pixels_to_point(long_edge_px),
     )
 
     meta = TemplateMeta(

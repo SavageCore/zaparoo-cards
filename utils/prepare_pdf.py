@@ -89,9 +89,14 @@ def stamp_cards(output_path, placements, card_size_in_pt):
         page = writer.pages[page_index]
         for placement in page_placements:
             card = PdfReader(placement.card_path).pages[0]
+            # Stamp the card beneath what reportlab already drew, so the crop
+            # marks and print outlines stay on top of the artwork. The bottom
+            # marks are top_margin long and so reach up over the bottom row of
+            # cards, which needs them drawn last, as zaparoo-designer does.
             page.merge_transformed_page(
                 card,
                 card_transform(placement, card_width_in_pt, card_height_in_pt),
+                over=False,
             )
 
     with open(output_path, "wb") as handle:
@@ -201,7 +206,10 @@ def prepare_pdf(
                 x_value,
                 paper_height_in_pt,
             )  # Top
-            c.line(x_value, 0, x_value, bottom_margin_in_pt)  # Bottom
+            # Matches zaparoo-designer: both ends use the top margin, so the
+            # bottom marks are top_margin long even though the bottom margin is
+            # only bottom_margin deep.
+            c.line(x_value, 0, x_value, top_margin_in_pt)  # Bottom
 
         # Horizontal lines at y positions
         for y_value in cut_helper_y:
