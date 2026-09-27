@@ -83,7 +83,7 @@ The N64 template is drawn once and recoloured at render time, so a game just nam
 }
 ```
 
-Available colours are `black`, `blue`, `gold`, `green`, `red` and `yellow`. With no `json` file the template prints as authored. Add `"template"` alongside `"colour"` if the game should use a different N64 template.
+Available colours are `black`, `blue`, `gold`, `green`, `red` and `yellow`. With no `json` file the game prints on the standard grey cartridge.
 
 ### Sources / Attributions
 
