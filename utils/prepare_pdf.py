@@ -201,7 +201,7 @@ def prepare_pdf(
                 x_value,
                 paper_height_in_pt,
             )  # Top
-            c.line(x_value, 0, x_value, top_margin_in_pt)  # Bottom
+            c.line(x_value, 0, x_value, bottom_margin_in_pt)  # Bottom
 
         # Horizontal lines at y positions
         for y_value in cut_helper_y:
@@ -237,21 +237,13 @@ def prepare_pdf(
 
             # Collect crop mark positions
             if cut_marks == "crop":
-                # Card corners after 270-degree rotation
-                # Top-left corner: (-width_in_pt / 2, -height_in_pt / 2) after rotation
-                tl_x = center_x - height_in_pt / 2
-                tl_y = center_y + width_in_pt / 2
-                # Top-right corner: (-width_in_pt / 2, height_in_pt / 2)
-                tr_x = center_x + height_in_pt / 2
-                tr_y = center_y + width_in_pt / 2
-                # Bottom-left corner: (width_in_pt / 2, -height_in_pt / 2)
-                bl_x = center_x - height_in_pt / 2
-                bl_y = center_y - width_in_pt / 2
-                # Bottom-right corner: (width_in_pt / 2, height_in_pt / 2)
-                br_x = center_x + height_in_pt / 2
-                br_y = center_y - width_in_pt / 2
-                cut_helper_x.update([tl_x, tr_x, bl_x, br_x])
-                cut_helper_y.update([tl_y, tr_y, bl_y, br_y])
+                # Marks have to land on the card's printed edge, not the cell box,
+                # so scale them the same way the card is stamped. The card is drawn
+                # portrait then rotated 270, so its long edge runs across the page.
+                half_x = card_scale * height_in_pt / 2
+                half_y = card_scale * width_in_pt / 2
+                cut_helper_x.update([center_x - half_x, center_x + half_x])
+                cut_helper_y.update([center_y - half_y, center_y + half_y])
 
             placements.append(
                 CardPlacement(
