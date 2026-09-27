@@ -203,16 +203,25 @@ def _collect_n64_example_jobs(system_path):
     if not candidates:
         return []
 
-    # Spread the colours over as many different games as possible so the example
-    # sheet shows off more than one cover.
+    # Show each colour on a game that really shipped in it, then fall back to
+    # unused covers for the colours no game in the folder uses.
     jobs = [replace(candidates.pop(0), colour=None)]
     used_covers = {jobs[0].cover_path}
 
     for colour in colour_names():
         source = next(
-            (job for job in candidates if job.cover_path not in used_covers),
-            candidates[0],
+            (
+                job
+                for job in candidates
+                if job.colour == colour and job.cover_path not in used_covers
+            ),
+            None,
         )
+        if source is None:
+            source = next(
+                (job for job in candidates if job.cover_path not in used_covers),
+                candidates[0],
+            )
         used_covers.add(source.cover_path)
         jobs.append(replace(source, colour=colour))
 
