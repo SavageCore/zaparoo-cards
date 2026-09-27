@@ -199,10 +199,11 @@ def prepare_pdf(
                 x_value,
                 paper_height_in_pt,
             )  # Top
-            # Matches zaparoo-designer: both ends use the top margin, so the
-            # bottom marks are top_margin long even though the bottom margin is
-            # only bottom_margin deep.
-            c.line(x_value, 0, x_value, top_margin_in_pt)  # Bottom
+            # zaparoo-designer draws the foot mark as
+            # `paperHeight - topMargin - 1` to `paperHeight`, which lands it at
+            # the bottom of the page and makes it 1pt longer than the head mark.
+            # Reproduced so the two match mark for mark.
+            c.line(x_value, 0, x_value, top_margin_in_pt + 1)  # Bottom
 
         # Horizontal lines at y positions
         for y_value in cut_helper_y:
