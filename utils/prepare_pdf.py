@@ -1,6 +1,7 @@
 import math
 from collections import defaultdict
 from dataclasses import dataclass
+from io import BytesIO
 
 from pypdf import PdfReader, PdfWriter, Transformation  # type: ignore
 from reportlab.lib.colors import black  # type: ignore
@@ -10,7 +11,11 @@ from reportlab.pdfgen import canvas  # type: ignore
 covers_dir = "GameCovers"
 artwork_dir = "tmp_artwork"
 
+# zaparoo-designer's NFCCCsizeCard has rx/ry 35 and strokeWidth 2, and divides
+# both by the same factors it uses for the print scale.
 OUTLINE_RADIUS_PT = 35 / 4
+OUTLINE_WIDTH_PT = 2 / 10
+CROP_MARK_WIDTH_PT = 2 / 10
 
 
 def from_mm_to_point(x):
@@ -53,12 +58,30 @@ def card_transform(placement, card_width_in_pt, card_height_in_pt):
     )
 
 
-def stamp_cards(output_path, placements, card_size_in_pt):
+def crop_marks_layer(paper_size, segments):
+    """Build a one page PDF holding nothing but the crop mark segments.
+
+    The marks are stamped after the cards so they sit on top of the artwork,
+    while the print outlines reportlab drew stay underneath it.
+    """
+    buffer = BytesIO()
+    marks = canvas.Canvas(buffer, pagesize=paper_size)
+    marks.setLineWidth(CROP_MARK_WIDTH_PT)
+    marks.setStrokeColor(black)
+    for x0, y0, x1, y1 in segments:
+        marks.line(x0, y0, x1, y1)
+    marks.showPage()
+    marks.save()
+    buffer.seek(0)
+    return PdfReader(buffer).pages[0]
+
+
+def stamp_cards(output_path, placements, card_size_in_pt, crop_marks):
     """Overlay the card PDFs onto the sheets reportlab laid out.
 
-    reportlab keeps ownership of the page furniture (grid, crop marks, print
-    outlines, document metadata). The card artwork is stamped on afterwards so
-    it stays vector instead of being resampled from a full card raster.
+    reportlab keeps ownership of the page furniture (grid, print outlines,
+    document metadata). The card artwork is stamped on afterwards so it stays
+    vector instead of being resampled from a full card raster.
     """
     if not placements:
         return
@@ -84,14 +107,29 @@ def stamp_cards(output_path, placements, card_size_in_pt):
         page = writer.pages[page_index]
         for placement in page_placements:
             card = PdfReader(placement.card_path).pages[0]
-            # Stamp the card beneath what reportlab already drew, so the crop
-            # marks and print outlines stay on top of the artwork. The bottom
-            # marks are top_margin long and so reach up over the bottom row of
-            # cards, which needs them drawn last, as zaparoo-designer does.
+            # Under the print outlines reportlab drew. zaparoo-designer also
+            # strokes the outline before the card, but its card background is
+            # inset from the clip edge so the stroke survives intact and reads at
+            # the full 0.2pt. Ours is full bleed, so the card has to go beneath
+            # the outline to get the same result - measured 0.2012pt of ink
+            # against the designer's 0.2012pt at 1200dpi, where a covered stroke
+            # would only show 0.0812pt.
             page.merge_transformed_page(
                 card,
                 card_transform(placement, card_width_in_pt, card_height_in_pt),
                 over=False,
+            )
+
+        segments = crop_marks.get(page_index)
+        if segments:
+            # Last of all, matching the designer drawing the marks once the page
+            # is full. The foot marks are top_margin + 1 long and so reach up
+            # over the bottom row of cards, which needs them on top.
+            page.merge_page(
+                crop_marks_layer(
+                    (page.mediabox.width, page.mediabox.height), segments
+                ),
+                over=True,
             )
 
     with open(output_path, "wb") as handle:
@@ -185,38 +223,45 @@ def prepare_pdf(
     # Crop mark helpers - sets to store unique x and y positions
     cut_helper_x = set()
     cut_helper_y = set()
+    crop_marks = {}
 
-    def make_crop_marks():
-        """Draw crop marks at collected positions"""
-        c.setLineWidth(0.2)
-        c.setStrokeColor(black)
+    def collect_crop_marks(page_idx):
+        """Gather this page's crop mark segments for stamping after the cards."""
+        segments = []
 
         # Vertical lines at x positions
-        for x_value in cut_helper_x:
-            c.line(
-                x_value,
-                paper_height_in_pt - top_margin_in_pt,
-                x_value,
-                paper_height_in_pt,
+        for x_value in sorted(cut_helper_x):
+            segments.append(
+                (
+                    x_value,
+                    paper_height_in_pt - top_margin_in_pt,
+                    x_value,
+                    paper_height_in_pt,
+                )
             )  # Top
             # zaparoo-designer draws the foot mark as
             # `paperHeight - topMargin - 1` to `paperHeight`, which lands it at
             # the bottom of the page and makes it 1pt longer than the head mark.
             # Reproduced so the two match mark for mark.
-            c.line(x_value, 0, x_value, top_margin_in_pt + 1)  # Bottom
+            segments.append((x_value, 0, x_value, top_margin_in_pt + 1))  # Bottom
 
         # Horizontal lines at y positions
-        for y_value in cut_helper_y:
-            c.line(
-                paper_width_in_pt - left_margin_in_pt,
-                y_value,
-                paper_width_in_pt,
-                y_value,
+        for y_value in sorted(cut_helper_y):
+            segments.append(
+                (
+                    paper_width_in_pt - left_margin_in_pt,
+                    y_value,
+                    paper_width_in_pt,
+                    y_value,
+                )
             )  # Right edge inward
-            c.line(0, y_value, left_margin_in_pt, y_value)  # Left edge outward
+            segments.append((0, y_value, left_margin_in_pt, y_value))  # Left edge outward
 
         cut_helper_x.clear()
         cut_helper_y.clear()
+
+        if segments:
+            crop_marks[page_idx] = segments
 
     placements = []
 
@@ -260,7 +305,7 @@ def prepare_pdf(
                 c.translate(center_x, center_y)
                 c.rotate(270)
                 c.setStrokeColor(black)
-                c.setLineWidth(0.2)
+                c.setLineWidth(OUTLINE_WIDTH_PT)
                 c.roundRect(
                     -width_in_pt / 2,
                     -height_in_pt / 2,
@@ -271,10 +316,10 @@ def prepare_pdf(
                 c.restoreState()
 
         if cut_marks == "crop":
-            make_crop_marks()
+            collect_crop_marks(page_idx)
 
         c.showPage()
 
     c.save()
 
-    stamp_cards(output_path, placements, card_size_in_pt)
+    stamp_cards(output_path, placements, card_size_in_pt, crop_marks)
