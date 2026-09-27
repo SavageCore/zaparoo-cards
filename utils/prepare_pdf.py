@@ -10,9 +10,6 @@ from reportlab.pdfgen import canvas  # type: ignore
 covers_dir = "GameCovers"
 artwork_dir = "tmp_artwork"
 
-# Cards are laid out with a hairline cut gap between them unless printing
-# full bleed.
-CUT_GAP_SCALE = 0.99
 OUTLINE_RADIUS_PT = 35 / 4
 
 
@@ -34,26 +31,24 @@ class CardPlacement:
     card_path: str
     center_x: float
     center_y: float
-    scale: float
 
 
 def card_transform(placement, card_width_in_pt, card_height_in_pt):
     """Build the matrix placing a card page's box into its grid cell.
 
     Reproduces the sequence the raster pipeline used via reportlab:
-    translate(cell centre) -> rotate(270) -> scale -> translate(-w/2, -h/2).
+    translate(cell centre) -> rotate(270) -> translate(-w/2, -h/2).
     Card pages are emitted by cairo with a zero origin MediaBox, so the page's
     own coordinates are the ones the matrix maps.
     """
-    scale = placement.scale
     return Transformation(
         (
             0.0,
-            -scale,
-            scale,
+            -1.0,
+            1.0,
             0.0,
-            placement.center_x - scale * card_height_in_pt / 2,
-            placement.center_y + scale * card_width_in_pt / 2,
+            placement.center_x - card_height_in_pt / 2,
+            placement.center_y + card_width_in_pt / 2,
         )
     )
 
@@ -109,7 +104,6 @@ def prepare_pdf(
     layout="vertical",
     print_outlines=False,
     cut_marks=None,
-    full_print=False,
     output_path="output.pdf",
 ):
     grid_size = [0, 0]
@@ -187,7 +181,6 @@ def prepare_pdf(
         grid_size[1] = avail_paper_height / rows
 
     labels_per_page = rows * columns
-    card_scale = 1.0 if full_print else CUT_GAP_SCALE
 
     # Crop mark helpers - sets to store unique x and y positions
     cut_helper_x = set()
@@ -245,11 +238,10 @@ def prepare_pdf(
 
             # Collect crop mark positions
             if cut_marks == "crop":
-                # Marks have to land on the card's printed edge, not the cell box,
-                # so scale them the same way the card is stamped. The card is drawn
-                # portrait then rotated 270, so its long edge runs across the page.
-                half_x = card_scale * height_in_pt / 2
-                half_y = card_scale * width_in_pt / 2
+                # Marks sit on the card's printed edge. The card is drawn portrait
+                # then rotated 270, so its long edge runs across the page.
+                half_x = height_in_pt / 2
+                half_y = width_in_pt / 2
                 cut_helper_x.update([center_x - half_x, center_x + half_x])
                 cut_helper_y.update([center_y - half_y, center_y + half_y])
 
@@ -259,7 +251,6 @@ def prepare_pdf(
                     card_path=cards[card_idx],
                     center_x=center_x,
                     center_y=center_y,
-                    scale=card_scale,
                 )
             )
 

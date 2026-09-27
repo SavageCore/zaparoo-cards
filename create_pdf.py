@@ -61,7 +61,6 @@ parser.add_argument("--outline", action="store_true", help="Enable outline")
 parser.add_argument(
     "--both", action="store_true", help="Enable both crop marks and outline"
 )
-parser.add_argument("--full", action="store_true", help="Enable full card print")
 parser.add_argument(
     "--limit",
     type=int,
@@ -122,7 +121,6 @@ args = parser.parse_args()
 def resolve_print_options():
     print_outlines = False
     cut_marks = None
-    full_print = False
 
     if (args.crop and args.outline) or args.both:
         cut_marks = "crop"
@@ -132,12 +130,7 @@ def resolve_print_options():
     elif args.outline:
         print_outlines = True
 
-    if args.full:
-        full_print = True
-        cut_marks = None
-        print_outlines = False
-
-    return print_outlines, cut_marks, full_print
+    return print_outlines, cut_marks
 
 
 def _build_nsmap(root):
@@ -532,7 +525,7 @@ def main():
     total_start = time.perf_counter()
     stage_times = {}
 
-    print_outlines, cut_marks, full_print = resolve_print_options()
+    print_outlines, cut_marks = resolve_print_options()
     output_pdf_path = "output_example.pdf" if args.example else "output.pdf"
 
     discover_start = time.perf_counter()
@@ -573,7 +566,6 @@ def main():
                     card_size_in_pt,
                     print_outlines=print_outlines,
                     cut_marks=cut_marks,
-                    full_print=full_print,
                     output_path=output_pdf_path,
                 )
                 spinner.ok("✅ ")

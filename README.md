@@ -30,7 +30,7 @@ You will need Python installed and to run `pip install -r requirements.txt` to i
 
 You can enable Crop Marks, Outline or Both by passing the `--crop`, `--outline` or `--both` flags respectively.
 
-If you want to print directly on to the cards you can use the `--full` flag to generate a PDF with the full card size.
+Cards print at their full media size, 85mm x 54mm, with no white surround, so a sheet can be printed and then cut up along the crop marks.
 
 To limit the number of cards processed use the `--limit` flag followed by a number, e.g. `--limit 20`, passing `--limit` without a number will default to 10.
 
