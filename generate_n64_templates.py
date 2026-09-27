@@ -50,7 +50,10 @@ def create_n64_svg(base_svg_path: str, output_dir, colors: dict):
                 el[0].attrib["style"] = f"fill:{fill_value};fill-opacity:1"
 
         def set_display_by_label(label_value, visible: bool):
-            elements = xpath(f".//svg:image[@inkscape:label='{label_value}']")
+            elements = xpath(
+                f".//svg:g[@inkscape:label='{label_value}']"
+                f" | .//svg:image[@inkscape:label='{label_value}']"
+            )
             for el in elements:
                 style = el.attrib.get("style", "")
                 new_style = re.sub(r"display\s*:\s*(inline|none)", "", style).strip(
@@ -102,12 +105,10 @@ def create_n64_svg(base_svg_path: str, output_dir, colors: dict):
         set_fill_by_inkscape_label("left-indent", shade_color)
         set_fill_by_inkscape_label("vertical-line", shade_color)
 
-        # Apply either normal "Only for N64" with yellow background or transparent one based on cartridge color
+        # Apply either the yellow-backed or transparent "Only for N64" badge
+        # based on cartridge color
         set_display_by_label(
-            "only-for-n64-yellow", color_name != "Gold" and color_name != "Yellow"
-        )
-        set_display_by_label(
-            "only-for-n64-trans", color_name == "Gold" or color_name == "Yellow"
+            "only-for-n64-yellow-bg", color_name != "Gold" and color_name != "Yellow"
         )
 
         # Save the modified file

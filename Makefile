@@ -11,3 +11,6 @@ example:
 
 example-outline:
 	uv run create_pdf.py --outline --example --no-cache
+
+n64:
+	uv run generate_n64_templates.py
