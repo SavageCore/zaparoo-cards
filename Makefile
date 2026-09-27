@@ -1,4 +1,3 @@
-.PHONY: cards cards-forced example example-outline compare n64
 
 cards:
 	uv run create_pdf.py --crop
@@ -18,5 +17,3 @@ compare:
 		--left-label "Before" \
 		--right-label "After"
 
-n64:
-	uv run generate_n64_templates.py

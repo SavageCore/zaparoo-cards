@@ -4,9 +4,11 @@ import os
 import shutil
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import replace
 
 from yaspin import yaspin
 
+from utils.n64_colours import colour_names  # type: ignore
 from utils.prepare_pdf import prepare_pdf  # type: ignore
 from utils.render_card import (  # type: ignore
     Job,
@@ -22,7 +24,7 @@ tmp_dir = "tmp_artwork"
 default_cache_dir = os.path.join(".cache", "zaparoo-cards", "rendered")
 COVER_EXTENSIONS = (".jpg", ".jpeg", ".png")
 
-_template_choice_cache: dict[str, str] = {}
+_game_config_cache: dict[str, dict] = {}
 
 
 parser = argparse.ArgumentParser(description="Generate PDF with game covers.")
@@ -82,7 +84,7 @@ parser.add_argument(
 parser.add_argument(
     "--example",
     action="store_true",
-    help="Generate output_example.pdf with one card per system and one card per N64 colour template",
+    help="Generate output_example.pdf with one card per system and one card per N64 cartridge colour",
 )
 
 args = parser.parse_args()
@@ -103,17 +105,47 @@ def resolve_print_options():
     return print_outlines, cut_marks
 
 
-def get_template_path(game, system):
+def get_game_config(system, game):
     config_path = os.path.join(covers_dir, system, f"{game}.json")
-    template = _template_choice_cache.get(config_path)
-    if template is None:
-        template = f"{system}.svg"
+    config = _game_config_cache.get(config_path)
+    if config is None:
+        config = {}
         if os.path.exists(config_path):
             with open(config_path, "r", encoding="utf-8") as f:
                 config = json.load(f)
-                template = config.get("template", template)
-        _template_choice_cache[config_path] = template
+        _game_config_cache[config_path] = config
+    return config
+
+
+def get_template_path(game, system):
+    template = get_game_config(system, game).get("template", f"{system}.svg")
     return os.path.join(cards_dir, template)
+
+
+def get_colour(game, system):
+    colour = get_game_config(system, game).get("colour")
+    if not isinstance(colour, str) or not colour.strip():
+        return None
+    return colour.strip().lower()
+
+
+def build_job(system, game, cover_path, colour=None):
+    """Build a Job, or None if the template or cover is missing."""
+    template_path = get_template_path(game, system)
+    if not os.path.exists(template_path) or not os.path.exists(cover_path):
+        print(f"Template or cover image not found for {game} on {system}")
+        return None
+
+    if colour is None:
+        colour = get_colour(game, system)
+
+    return Job(
+        system=system,
+        game=game,
+        cover_path=cover_path,
+        template_path=template_path,
+        colour=colour,
+    )
 
 
 def render_card(job, use_cache=True):
@@ -137,20 +169,11 @@ def collect_jobs():
                 continue
 
             game = os.path.splitext(filename)[0]
-            template_path = get_template_path(game, system)
             cover_path = os.path.join(system_path, filename)
 
-            if os.path.exists(template_path) and os.path.exists(cover_path):
-                jobs.append(
-                    Job(
-                        system=system,
-                        game=game,
-                        cover_path=cover_path,
-                        template_path=template_path,
-                    )
-                )
-            else:
-                print(f"Template or cover image not found for {game} on {system}")
+            job = build_job(system, game, cover_path)
+            if job is not None:
+                jobs.append(job)
 
             if args.limit is not None and len(jobs) >= args.limit:
                 return jobs
@@ -166,90 +189,32 @@ def _first_cover_file(system_path):
 
 
 def _collect_n64_example_jobs(system_path):
-    jobs = []
-    missing_template_mappings = []
-    covers = [
-        filename
-        for filename in sorted(os.listdir(system_path))
-        if filename.lower().endswith(COVER_EXTENSIONS)
-    ]
-    if not covers:
-        return jobs
-
-    base_jobs_by_template = {}
-    all_cover_jobs = []
-    for filename in covers:
-        game = os.path.splitext(filename)[0]
-        template_path = get_template_path(game, "n64")
-        cover_path = os.path.join(system_path, filename)
-        if os.path.exists(template_path) and os.path.exists(cover_path):
-            job = Job(
-                system="n64",
-                game=game,
-                cover_path=cover_path,
-                template_path=template_path,
-            )
-            all_cover_jobs.append(job)
-            base_jobs_by_template.setdefault(os.path.basename(template_path), []).append(job)
-
-    n64_template_variants = []
-    base_template = "n64.svg"
-    if os.path.exists(os.path.join(cards_dir, base_template)):
-        n64_template_variants.append(base_template)
-
-    n64_template_variants.extend(
-        sorted(
-            filename
-            for filename in os.listdir(cards_dir)
-            if filename.startswith("n64_") and filename.endswith(".svg")
-        )
-    )
-
-    if not n64_template_variants:
-        if base_jobs_by_template:
-            first_template = sorted(base_jobs_by_template.keys())[0]
-            jobs.append(base_jobs_by_template[first_template][0])
-        return jobs
-
-    used_cover_paths = set()
-
-    for template_filename in n64_template_variants:
-        template_path = os.path.join(cards_dir, template_filename)
-        if not os.path.exists(template_path):
+    """One card for the template as authored, plus one per cartridge colour."""
+    candidates = []
+    for filename in sorted(os.listdir(system_path)):
+        if not filename.lower().endswith(COVER_EXTENSIONS):
             continue
-
-        matching_jobs = base_jobs_by_template.get(template_filename)
-        if matching_jobs:
-            selected = next(
-                (job for job in matching_jobs if job.cover_path not in used_cover_paths),
-                matching_jobs[0],
-            )
-            used_cover_paths.add(selected.cover_path)
-            jobs.append(selected)
-            continue
-
-        missing_template_mappings.append(template_filename)
-        fallback_source = next(
-            (job for job in all_cover_jobs if job.cover_path not in used_cover_paths),
-            all_cover_jobs[0] if all_cover_jobs else None,
+        job = build_job(
+            "n64", os.path.splitext(filename)[0], os.path.join(system_path, filename)
         )
-        if fallback_source is not None:
-            used_cover_paths.add(fallback_source.cover_path)
-            jobs.append(
-                Job(
-                    system="n64",
-                    game=fallback_source.game,
-                    cover_path=fallback_source.cover_path,
-                    template_path=template_path,
-                )
-            )
+        if job is not None:
+            candidates.append(job)
 
-    if missing_template_mappings:
-        print(
-            "Warning: no explicit N64 game mapping found for template(s): "
-            + ", ".join(missing_template_mappings)
-            + ". Using fallback games for those colours in --example mode."
+    if not candidates:
+        return []
+
+    # Spread the colours over as many different games as possible so the example
+    # sheet shows off more than one cover.
+    jobs = [replace(candidates.pop(0), colour=None)]
+    used_covers = {jobs[0].cover_path}
+
+    for colour in colour_names():
+        source = next(
+            (job for job in candidates if job.cover_path not in used_covers),
+            candidates[0],
         )
+        used_covers.add(source.cover_path)
+        jobs.append(replace(source, colour=colour))
 
     return jobs
 
@@ -272,20 +237,11 @@ def collect_example_jobs():
             continue
 
         game = os.path.splitext(filename)[0]
-        template_path = get_template_path(game, system)
         cover_path = os.path.join(system_path, filename)
 
-        if os.path.exists(template_path) and os.path.exists(cover_path):
-            jobs.append(
-                Job(
-                    system=system,
-                    game=game,
-                    cover_path=cover_path,
-                    template_path=template_path,
-                )
-            )
-        else:
-            print(f"Template or cover image not found for {game} on {system}")
+        job = build_job(system, game, cover_path)
+        if job is not None:
+            jobs.append(job)
 
     return jobs
 

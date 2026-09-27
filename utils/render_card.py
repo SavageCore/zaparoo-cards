@@ -8,6 +8,7 @@ from lxml import etree
 from PIL import Image
 from svgpathtools import parse_path  # type: ignore
 
+from utils.n64_colours import apply_cartridge_colour
 from utils.prepare_pdf import from_pixels_to_point
 
 FRAME_META_SELECTOR = ".//svg:path[@inkscape:label='Artwork-Frame']"
@@ -28,6 +29,7 @@ class Job:
     game: str
     cover_path: str
     template_path: str
+    colour: str | None = None
 
 
 @dataclass(frozen=True)
@@ -128,9 +130,12 @@ def _cache_output_path(job, cache_dir):
     img_filename = os.path.basename(job.cover_path)
     img_stem = os.path.splitext(img_filename)[0]
     template_stem = os.path.splitext(os.path.basename(job.template_path))[0]
+    # The cartridge colour is not part of the template path, so it has to be in
+    # the cache key too or coloured cards would collide with the plain ones.
+    variant_stem = f"{template_stem}_{job.colour}" if job.colour else template_stem
     system_dir = os.path.join(cache_dir, job.system)
     os.makedirs(system_dir, exist_ok=True)
-    return os.path.join(system_dir, f"temp_{img_stem}__{template_stem}.pdf")
+    return os.path.join(system_dir, f"temp_{img_stem}__{variant_stem}.pdf")
 
 
 def render_card(job, cache_dir, use_cache=True):
@@ -146,6 +151,8 @@ def render_card(job, cache_dir, use_cache=True):
     nsmap = _build_nsmap(root)
     svg_ns = nsmap["svg"]
     xlink_ns = nsmap["xlink"]
+
+    apply_cartridge_colour(root, nsmap, job.colour)
 
     placeholder_elements = _xpath(
         root, nsmap, ".//svg:image[@inkscape:label='placeholder']"

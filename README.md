@@ -36,7 +36,7 @@ To limit the number of cards processed use the `--limit` flag followed by a numb
 
 Limiting systems to process is done by passing the `--systems` flag followed by the system names, e.g. `--systems snes nes`.
 
-Use `--example` to generate `output_example.pdf` with one card per system, and for `n64` one card per available `n64_<colour>.svg` template.
+Use `--example` to generate `output_example.pdf` with one card per system, and for `n64` one card per cartridge colour.
 
 Passing the `--keep` flag will keep the temporary files created during processing, otherwise they will be deleted after the PDF is generated.
 
@@ -73,17 +73,17 @@ This script will remove text SVGs which is useful for thenounproject which inclu
 1. Run `python process.py`.
    - This will process all SVG files in the `Cartridges/`, `Consoles/`, `Controllers/`, `Logos/` directories.
 
-### Generating N64 Alternative Cartridge Colour Templates
+### N64 Cartridge Colours
 
-1. Run `python generate_n64_templates.py`.
-   - This will create N64 cartridge templates in the `Cards/` directory with the naming convention `n64_<colour>.svg` for each colour variant.
-   - To use these templates create a `json` file in the `GameCovers/n64` directory with the name `Game Title.json` just like the artwork file. The `json` file should contain the following structure:
-     ```json
-     {
-         "template": "n64_<colour>.svg"
-     }
-     ```
-        I have included example files!
+The N64 template is drawn once and recoloured at render time, so a game just names the cartridge colour it should print as. Create a `json` file in the `GameCovers/n64` directory named after the artwork file, e.g. `GameCovers/n64/Super Mario 64.json`:
+
+```json
+{
+    "colour": "gold"
+}
+```
+
+Available colours are `black`, `blue`, `gold`, `green`, `red` and `yellow`. With no `json` file the template prints as authored. Add `"template"` alongside `"colour"` if the game should use a different N64 template.
 
 ### Sources / Attributions
 
