@@ -42,7 +42,7 @@ Passing the `--keep` flag will keep the temporary files created during processin
 
 Performance options:
 - Use `--workers N` to render cards in parallel (default is auto-selected based on CPU cores).
-- Rendered card PNGs are cached persistently in `.cache/zaparoo-cards/rendered` by default.
+- Rendered cards are cached persistently as single page vector PDFs in `.cache/zaparoo-cards/rendered` by default. Each card is drawn into the sheet as vectors, so only the cover artwork is raster, at 300 DPI.
 - Use `--cache-dir <path>` to change where persistent cache files are stored.
 - Use `--render-only` to skip PDF creation when you only want to warm/build the render cache.
 - Use `--benchmark` to print stage timings (discover, render, pdf, total).

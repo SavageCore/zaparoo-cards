@@ -1,11 +1,19 @@
 import math
+from collections import defaultdict
+from dataclasses import dataclass
 
+from pypdf import PdfReader, PdfWriter, Transformation  # type: ignore
 from reportlab.lib.colors import black  # type: ignore
 from reportlab.lib.pagesizes import A4  # type: ignore
 from reportlab.pdfgen import canvas  # type: ignore
 
 covers_dir = "GameCovers"
 artwork_dir = "tmp_artwork"
+
+# Cards are laid out with a hairline cut gap between them unless printing
+# full bleed.
+CUT_GAP_SCALE = 0.99
+OUTLINE_RADIUS_PT = 35 / 4
 
 
 def from_mm_to_point(x):
@@ -18,8 +26,81 @@ def from_pixels_to_point(x):
     return (x / 300) * 72
 
 
+@dataclass(frozen=True)
+class CardPlacement:
+    """Where one card PDF has to be stamped onto a finished sheet."""
+
+    page_index: int
+    card_path: str
+    center_x: float
+    center_y: float
+    scale: float
+
+
+def card_transform(placement, card_width_in_pt, card_height_in_pt):
+    """Build the matrix placing a card page's box into its grid cell.
+
+    Reproduces the sequence the raster pipeline used via reportlab:
+    translate(cell centre) -> rotate(270) -> scale -> translate(-w/2, -h/2).
+    Card pages are emitted by cairo with a zero origin MediaBox, so the page's
+    own coordinates are the ones the matrix maps.
+    """
+    scale = placement.scale
+    return Transformation(
+        (
+            0.0,
+            -scale,
+            scale,
+            0.0,
+            placement.center_x - scale * card_height_in_pt / 2,
+            placement.center_y + scale * card_width_in_pt / 2,
+        )
+    )
+
+
+def stamp_cards(output_path, placements, card_size_in_pt):
+    """Overlay the card PDFs onto the sheets reportlab laid out.
+
+    reportlab keeps ownership of the page furniture (grid, crop marks, print
+    outlines, document metadata). The card artwork is stamped on afterwards so
+    it stays vector instead of being resampled from a full card raster.
+    """
+    if not placements:
+        return
+
+    card_width_in_pt, card_height_in_pt = card_size_in_pt
+
+    reader = PdfReader(output_path)
+    writer = PdfWriter()
+    for page in reader.pages:
+        writer.add_page(page)
+
+    metadata = reader.metadata
+    if metadata:
+        writer.add_metadata(
+            {str(key): str(value) for key, value in metadata.items() if value}
+        )
+
+    placements_by_page = defaultdict(list)
+    for placement in placements:
+        placements_by_page[placement.page_index].append(placement)
+
+    for page_index, page_placements in placements_by_page.items():
+        page = writer.pages[page_index]
+        for placement in page_placements:
+            card = PdfReader(placement.card_path).pages[0]
+            page.merge_transformed_page(
+                card,
+                card_transform(placement, card_width_in_pt, card_height_in_pt),
+            )
+
+    with open(output_path, "wb") as handle:
+        writer.write(handle)
+
+
 def prepare_pdf(
     cards,
+    card_size_in_pt,
     layout="vertical",
     print_outlines=False,
     cut_marks=None,
@@ -48,8 +129,13 @@ def prepare_pdf(
     right_margin_in_pt = from_mm_to_point(right_margin)
     bottom_margin_in_pt = from_mm_to_point(bottom_margin)
 
-    width_in_pt = from_pixels_to_point(1004)  # 240.96 points (vertical: 153.12)
-    height_in_pt = from_pixels_to_point(638)  # 153.12 points (vertical: 240.96)
+    card_width_in_pt, card_height_in_pt = card_size_in_pt
+    # The grid maths runs in the rotated (landscape) frame, so seed it with the
+    # card's long and short edges. The "vertical" branch below swaps them back
+    # to the card page's own portrait dimensions, which is also what the
+    # placement matrix needs.
+    width_in_pt = card_height_in_pt
+    height_in_pt = card_width_in_pt
     avail_paper_width = paper_width_in_pt - left_margin_in_pt - right_margin_in_pt
     avail_paper_height = paper_height_in_pt - top_margin_in_pt - bottom_margin_in_pt
 
@@ -96,6 +182,7 @@ def prepare_pdf(
         grid_size[1] = avail_paper_height / rows
 
     labels_per_page = rows * columns
+    card_scale = 1.0 if full_print else CUT_GAP_SCALE
 
     # Crop mark helpers - sets to store unique x and y positions
     cut_helper_x = set()
@@ -129,6 +216,8 @@ def prepare_pdf(
         cut_helper_x.clear()
         cut_helper_y.clear()
 
+    placements = []
+
     # Process cards
     for page_idx in range(math.ceil(len(cards) / labels_per_page)):
         for idx in range(labels_per_page):
@@ -143,19 +232,12 @@ def prepare_pdf(
             x = left_margin_in_pt + col * grid_size[0]
             y = paper_height_in_pt - top_margin_in_pt - (row + 1) * grid_size[1]
 
-            print_width = width_in_pt
-            print_height = height_in_pt
-            if not full_print:
-                # Apply scaling for border
-                scale_factor = 0.99
-                print_width = width_in_pt * scale_factor
-                print_height = height_in_pt * scale_factor
+            center_x = x + grid_size[0] / 2
+            center_y = y + grid_size[1] / 2
 
             # Collect crop mark positions
             if cut_marks == "crop":
                 # Card corners after 270-degree rotation
-                center_x = x + grid_size[0] / 2
-                center_y = y + grid_size[1] / 2
                 # Top-left corner: (-width_in_pt / 2, -height_in_pt / 2) after rotation
                 tl_x = center_x - height_in_pt / 2
                 tl_y = center_y + width_in_pt / 2
@@ -171,20 +253,20 @@ def prepare_pdf(
                 cut_helper_x.update([tl_x, tr_x, bl_x, br_x])
                 cut_helper_y.update([tl_y, tr_y, bl_y, br_y])
 
-            c.saveState()
-
-            c.translate(x + grid_size[0] / 2, y + grid_size[1] / 2)
-            c.rotate(270)
-
-            c.drawImage(
-                cards[card_idx],
-                -print_width / 2,
-                -print_height / 2,
-                width=print_width,
-                height=print_height,
+            placements.append(
+                CardPlacement(
+                    page_index=page_idx,
+                    card_path=cards[card_idx],
+                    center_x=center_x,
+                    center_y=center_y,
+                    scale=card_scale,
+                )
             )
 
             if print_outlines:
+                c.saveState()
+                c.translate(center_x, center_y)
+                c.rotate(270)
                 c.setStrokeColor(black)
                 c.setLineWidth(0.2)
                 c.roundRect(
@@ -192,10 +274,9 @@ def prepare_pdf(
                     -height_in_pt / 2,
                     width_in_pt,
                     height_in_pt,
-                    radius=35 / 4,
+                    radius=OUTLINE_RADIUS_PT,
                 )
-
-            c.restoreState()
+                c.restoreState()
 
         if cut_marks == "crop":
             make_crop_marks()
@@ -203,3 +284,5 @@ def prepare_pdf(
         c.showPage()
 
     c.save()
+
+    stamp_cards(output_path, placements, card_size_in_pt)

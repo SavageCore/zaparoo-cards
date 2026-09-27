@@ -8,13 +8,13 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from io import BytesIO
 
-from cairosvg import svg2png  # type: ignore
+from cairosvg import svg2pdf  # type: ignore
 from lxml import etree
 from PIL import Image
 from svgpathtools import parse_path  # type: ignore
 from yaspin import yaspin
 
-from utils.prepare_pdf import prepare_pdf  # type: ignore
+from utils.prepare_pdf import from_pixels_to_point, prepare_pdf  # type: ignore
 
 # Base directories
 cards_dir = "Cards"
@@ -25,6 +25,10 @@ FRAME_META_SELECTOR = ".//svg:path[@inkscape:label='Artwork-Frame']"
 ARTWORK_REPLACE_SELECTOR = ".//svg:path[@id='Artwork-Frame-bg' or @inkscape:label='Artwork-Frame-bg']"
 default_cache_dir = os.path.join(".cache", "zaparoo-cards", "rendered")
 COVER_EXTENSIONS = (".jpg", ".jpeg", ".png")
+
+# Printed long edge of a card, in 300 DPI pixels. The short edge follows from the
+# template viewBox so the artwork is never stretched.
+CARD_LONG_EDGE_PX = 1004
 
 
 @dataclass(frozen=True)
@@ -41,6 +45,7 @@ class TemplateMeta:
     x: float
     y: float
     target_height: int
+    card_size_in_pt: tuple[float, float]
 
 
 _template_choice_cache: dict[str, str] = {}
@@ -178,20 +183,29 @@ def get_template_meta(svg_path):
     frame_width = int(xmax - xmin) - 4
 
     doc_width = frame_width
+    doc_height = 1.0
     if "viewBox" in root.attrib:
         viewbox = root.attrib["viewBox"].split()
-        if len(viewbox) >= 3:
+        if len(viewbox) >= 4:
             doc_width = float(viewbox[2])
+            doc_height = float(viewbox[3])
     elif "width" in root.attrib:
         width_str = root.attrib["width"]
         if width_str.endswith("px"):
             doc_width = float(width_str.replace("px", ""))
+
+    long_edge_pt = from_pixels_to_point(CARD_LONG_EDGE_PX)
+    card_size_in_pt = (
+        long_edge_pt * doc_width / doc_height if doc_height else long_edge_pt,
+        long_edge_pt,
+    )
 
     meta = TemplateMeta(
         frame_width=frame_width,
         x=(doc_width - frame_width) / 2,
         y=252.454,
         target_height=721,
+        card_size_in_pt=card_size_in_pt,
     )
     _template_meta_cache[svg_path] = meta
     return meta
@@ -226,15 +240,15 @@ def _cache_output_path(job):
     template_stem = os.path.splitext(os.path.basename(job.template_path))[0]
     system_dir = os.path.join(args.cache_dir, job.system)
     os.makedirs(system_dir, exist_ok=True)
-    return os.path.join(system_dir, f"temp_{img_stem}__{template_stem}.png")
+    return os.path.join(system_dir, f"temp_{img_stem}__{template_stem}.pdf")
 
 
 def render_card(job, use_cache=True):
     meta = get_template_meta(job.template_path)
-    output_png_path = _cache_output_path(job)
+    output_pdf_path = _cache_output_path(job)
 
-    if use_cache and _is_fresh_output(output_png_path, [job.cover_path, job.template_path]):
-        return output_png_path, True
+    if use_cache and _is_fresh_output(output_pdf_path, [job.cover_path, job.template_path]):
+        return output_pdf_path, True
 
     root = _load_template_root(job.template_path)
     nsmap = _build_nsmap(root)
@@ -281,13 +295,20 @@ def render_card(job, use_cache=True):
         raise ValueError(f"Artwork parent not found in template {job.template_path}")
     parent.replace(artwork_element, image_el)
 
-    svg2png(
+    # Cairo sizes the PDF page from the root width/height, so pin it to the
+    # card's printed size. That keeps one SVG user unit equal to 1/300in, which
+    # puts the embedded cover art at 300 DPI with no resampling.
+    card_width_pt, card_height_pt = meta.card_size_in_pt
+    root.set("width", f"{card_width_pt:.4f}pt")
+    root.set("height", f"{card_height_pt:.4f}pt")
+
+    svg2pdf(
         bytestring=etree.tostring(root, xml_declaration=True, encoding="UTF-8"),
-        write_to=output_png_path,
+        write_to=output_pdf_path,
         background_color="white",
     )
 
-    return output_png_path, False
+    return output_pdf_path, False
 
 
 def collect_jobs():
@@ -461,7 +482,7 @@ def collect_example_jobs():
 
 
 def process_jobs(jobs):
-    card_images = [None] * len(jobs)
+    card_pdfs = [None] * len(jobs)
     cached_hits = 0
     workers = max(1, args.workers)
 
@@ -470,7 +491,7 @@ def process_jobs(jobs):
             if workers == 1:
                 for i, job in enumerate(jobs):
                     output_path, was_cached = render_card(job, use_cache=not args.no_cache)
-                    card_images[i] = output_path
+                    card_pdfs[i] = output_path
                     cached_hits += int(was_cached)
             else:
                 with ThreadPoolExecutor(max_workers=workers) as executor:
@@ -481,7 +502,7 @@ def process_jobs(jobs):
                     for future in as_completed(future_to_index):
                         i = future_to_index[future]
                         output_path, was_cached = future.result()
-                        card_images[i] = output_path
+                        card_pdfs[i] = output_path
                         cached_hits += int(was_cached)
 
             spinner.ok("✅ ")
@@ -490,7 +511,7 @@ def process_jobs(jobs):
             raise RuntimeError(f"Failed to render card images: {e}") from e
 
     print(f"Rendered {len(jobs)} cards ({cached_hits} cached, {len(jobs) - cached_hits} new).")
-    return [path for path in card_images if path is not None]
+    return [path for path in card_pdfs if path is not None]
 
 
 def print_benchmark(stage_times, card_count):
@@ -527,7 +548,7 @@ def main():
     os.makedirs(args.cache_dir, exist_ok=True)
 
     render_start = time.perf_counter()
-    card_images = process_jobs(jobs)
+    card_pdfs = process_jobs(jobs)
     stage_times["render"] = time.perf_counter() - render_start
 
     if args.render_only:
@@ -535,17 +556,21 @@ def main():
         stage_times["pdf"] = 0.0
         stage_times["total"] = time.perf_counter() - total_start
         if args.benchmark:
-            print_benchmark(stage_times, len(card_images))
+            print_benchmark(stage_times, len(card_pdfs))
         if os.path.exists(tmp_dir) and not args.keep:
             shutil.rmtree(tmp_dir)
         return
 
-    if card_images:
+    if card_pdfs:
+        # Every template shares a viewBox, so the first job defines the sheet's
+        # card box for all of them.
+        card_size_in_pt = get_template_meta(jobs[0].template_path).card_size_in_pt
         pdf_start = time.perf_counter()
         with yaspin(text="Generating PDF with card images...", color="cyan") as spinner:
             try:
                 prepare_pdf(
-                    card_images,
+                    card_pdfs,
+                    card_size_in_pt,
                     print_outlines=print_outlines,
                     cut_marks=cut_marks,
                     full_print=full_print,
@@ -562,7 +587,7 @@ def main():
 
     stage_times["total"] = time.perf_counter() - total_start
     if args.benchmark:
-        print_benchmark(stage_times, len(card_images))
+        print_benchmark(stage_times, len(card_pdfs))
 
 
 if __name__ == "__main__":
