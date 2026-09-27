@@ -76,7 +76,9 @@ def crop_marks_layer(paper_size, segments):
     return PdfReader(buffer).pages[0]
 
 
-def stamp_cards(output_path, placements, card_size_in_pt, crop_marks):
+def stamp_cards(
+    output_path, placements, card_size_in_pt, crop_marks, transform=card_transform
+):
     """Overlay the card PDFs onto the sheets reportlab laid out.
 
     reportlab keeps ownership of the page furniture (grid, print outlines,
@@ -116,7 +118,7 @@ def stamp_cards(output_path, placements, card_size_in_pt, crop_marks):
             # would only show 0.0812pt.
             page.merge_transformed_page(
                 card,
-                card_transform(placement, card_width_in_pt, card_height_in_pt),
+                transform(placement, card_width_in_pt, card_height_in_pt),
                 over=False,
             )
 

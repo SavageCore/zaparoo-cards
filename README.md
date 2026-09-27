@@ -40,6 +40,24 @@ Use `--example` to generate `output_example.pdf` with one card per system, and f
 
 Passing the `--keep` flag will keep the temporary files created during processing, otherwise they will be deleted after the PDF is generated.
 
+#### Comparing two card designs
+
+`compare_templates.py` renders two card templates from the same cover art onto one page so designs can be diffed. Cards are shown upright rather than in the rotated print orientation, and the only raster content is the cover, everything else stays vector.
+
+```sh
+uv run compare_templates.py \
+  --left Cards/neogeo_old.svg --left-label "Before - hucard" \
+  --right Cards/neogeo.svg --right-label "After - cartridge"
+```
+
+or, for the Neo Geo designs specifically:
+
+```sh
+make compare
+```
+
+`Cards/neogeo_old.svg` is the Neo Geo design as it stood at `ee8a397^`, rescued before the cartridge redesign landed. It is not wired into any system by default, so normal runs ignore it. Point a game at it by adding a `json` file next to its cover, e.g. `GameCovers/neogeo/Metal Slug X.json` containing `{"template": "neogeo_old.svg"}`.
+
 Performance options:
 - Use `--workers N` to render cards in parallel (default is auto-selected based on CPU cores).
 - Rendered cards are cached persistently as single page vector PDFs in `.cache/zaparoo-cards/rendered` by default. Each card is drawn into the sheet as vectors, so only the cover artwork is raster, at 300 DPI.
