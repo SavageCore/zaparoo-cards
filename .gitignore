@@ -1,6 +1,7 @@
 _trimmed
 _optimised
 cards/png
+Cards/*_old.svg
 GameCovers/*/*.jpg
 tmp_artwork/
 output.pdf
