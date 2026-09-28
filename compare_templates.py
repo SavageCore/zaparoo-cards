@@ -13,10 +13,6 @@ from utils.prepare_pdf import (  # type: ignore
 )
 from utils.render_card import Job, get_template_meta, render_card  # type: ignore
 
-# The rescued hucard design is the tree at ee8a397^, the commit immediately
-# before the cartridge redesign landed.
-RESCUE_REF = "ee8a397^"
-
 DEFAULT_LEFT = "Cards/neogeo_old.svg"
 DEFAULT_RIGHT = "Cards/neogeo.svg"
 DEFAULT_COVER = os.path.join("GameCovers", "neogeo", "Metal Slug X.jpg")
@@ -27,7 +23,6 @@ BODY_FONT = "Helvetica"
 TITLE_SIZE = 16
 SUBTITLE_SIZE = 9
 CAPTION_SIZE = 10
-NOTE_SIZE = 8
 
 MARGIN = from_mm_to_point(12)
 GUTTER = from_mm_to_point(12)
@@ -101,28 +96,18 @@ def main():
     card_width_pt, card_height_pt = get_template_meta(args.left).card_size_in_pt
 
     captions = (args.left_label, args.right_label)
-    template_note = "   ".join(
-        f"{caption}: {os.path.basename(path)}"
-        for caption, path in zip(captions, (args.left, args.right))
-    )
     cover_name = os.path.splitext(os.path.basename(args.cover))[0]
-    print_note = (
-        "Shown upright for comparison. Print sheets rotate cards 90 degrees, "
-        "so the 85mm edge runs across the paper."
-    )
 
     page_width = A4[0]
     page_height = (
         MARGIN
         + TITLE_SIZE
         + TITLE_GAP
-        + SUBTITLE_SIZE
         + CARD_GAP
         + card_height_pt
         + CAPTION_GAP
         + CAPTION_SIZE
         + NOTE_GAP
-        + NOTE_SIZE
         + MARGIN
     )
 
@@ -134,17 +119,13 @@ def main():
     cards_top = subtitle_baseline - CARD_GAP
     cards_center_y = cards_top - card_height_pt / 2
     caption_baseline = cards_top - card_height_pt - CAPTION_GAP
-    note_baseline = caption_baseline - (NOTE_GAP + NOTE_SIZE)
 
     c = canvas.Canvas(args.output, pagesize=(page_width, page_height))
     c.setCreator("zaparoo-cards")
     c._doc.info.producer = "zaparoo-cards"
 
     c.setFont(TITLE_FONT, TITLE_SIZE)
-    c.drawCentredString(page_width / 2, title_baseline, f"{cover_name} - card design")
-
-    c.setFont(BODY_FONT, SUBTITLE_SIZE)
-    c.drawCentredString(page_width / 2, subtitle_baseline, template_note)
+    c.drawCentredString(page_width / 2, title_baseline, f"{cover_name}")
 
     placements = []
     for index, (card_pdf, caption) in enumerate(zip(card_pdfs, captions)):
@@ -172,9 +153,6 @@ def main():
                 center_y=cards_center_y,
             )
         )
-
-    c.setFont(BODY_FONT, NOTE_SIZE)
-    c.drawCentredString(page_width / 2, note_baseline, print_note)
 
     c.showPage()
     c.save()

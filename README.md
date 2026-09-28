@@ -46,8 +46,8 @@ Passing the `--keep` flag will keep the temporary files created during processin
 
 ```sh
 uv run compare_templates.py \
-  --left Cards/neogeo_old.svg --left-label "Before - hucard" \
-  --right Cards/neogeo.svg --right-label "After - cartridge"
+  --left Cards/neogeo_old.svg --left-label "Before" \
+  --right Cards/neogeo.svg --right-label "After"
 ```
 
 or, for the Neo Geo designs specifically:
