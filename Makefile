@@ -1,3 +1,4 @@
+.PHONY: cards cards-forced example example-outline compare
 
 cards:
 	uv run create_pdf.py --crop
@@ -11,9 +12,22 @@ example:
 example-outline:
 	uv run create_pdf.py --outline --example --no-cache
 
-# Side by side of the rescued pre-ee8a397 hucard design and the current one.
+# Side by side of a card design and matching Cards/<system>_old.svg
+#   make compare SYSTEM=saturn
+#   make compare-saturn
+SYSTEM ?= neogeo
+
+COVER_neogeo := Metal Slug X.jpg
+COVER_saturn := Guardian Heroes.jpg
+
 compare:
 	uv run compare_templates.py \
+		--left "Cards/$(SYSTEM)_old.svg" \
+		--right "Cards/$(SYSTEM).svg" \
+		--cover "GameCovers/$(SYSTEM)/$(COVER_$(SYSTEM))" \
 		--left-label "Before" \
-		--right-label "After"
+		--right-label "After" \
+		--output "output_compare_$(SYSTEM).pdf"
 
+compare-%:
+	@$(MAKE) --no-print-directory compare SYSTEM=$*
