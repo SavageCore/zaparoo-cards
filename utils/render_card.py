@@ -8,8 +8,15 @@ from lxml import etree
 from PIL import Image
 from svgpathtools import parse_path  # type: ignore
 
-from utils.n64_colours import apply_cartridge_colour
+from utils import n64_colours, snes_colours
 from utils.prepare_pdf import from_pixels_to_point
+
+# Each system recolours its own template, keyed by the template's file stem so
+# an override template that has no colour rules simply stays as authored.
+_COLOUR_RENDERERS = {
+    "n64": n64_colours.apply_cartridge_colour,
+    "snes": snes_colours.apply_cartridge_colour,
+}
 
 FRAME_META_SELECTOR = ".//svg:path[@inkscape:label='Artwork-Frame']"
 ARTWORK_REPLACE_SELECTOR = (
@@ -152,7 +159,10 @@ def render_card(job, cache_dir, use_cache=True):
     svg_ns = nsmap["svg"]
     xlink_ns = nsmap["xlink"]
 
-    apply_cartridge_colour(root, nsmap, job.colour)
+    template_stem = os.path.splitext(os.path.basename(job.template_path))[0]
+    apply_colour = _COLOUR_RENDERERS.get(template_stem)
+    if apply_colour is not None:
+        apply_colour(root, nsmap, job.colour)
 
     placeholder_elements = _xpath(
         root, nsmap, ".//svg:image[@inkscape:label='placeholder']"

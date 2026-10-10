@@ -8,7 +8,7 @@ from dataclasses import replace
 
 from yaspin import yaspin
 
-from utils.n64_colours import colour_names  # type: ignore
+from utils import n64_colours, snes_colours  # type: ignore
 from utils.prepare_pdf import prepare_pdf  # type: ignore
 from utils.render_card import (  # type: ignore
     Job,
@@ -23,6 +23,13 @@ tmp_dir = "tmp_artwork"
 
 default_cache_dir = os.path.join(".cache", "zaparoo-cards", "rendered")
 COVER_EXTENSIONS = (".jpg", ".jpeg", ".png")
+
+# Systems whose template supports a named cartridge colour, and the colours
+# each one offers. `--example` renders one card per colour for these.
+SYSTEM_COLOURS = {
+    "n64": n64_colours.colour_names(),
+    "snes": snes_colours.colour_names(),
+}
 
 _game_config_cache: dict[str, dict] = {}
 
@@ -84,7 +91,8 @@ parser.add_argument(
 parser.add_argument(
     "--example",
     action="store_true",
-    help="Generate output_example.pdf with one card per system and one card per N64 cartridge colour",
+    help="Generate output_example.pdf with one card per system and one card per "
+    "cartridge colour for n64 and snes",
 )
 
 args = parser.parse_args()
@@ -188,14 +196,14 @@ def _first_cover_file(system_path):
     return None
 
 
-def _collect_n64_example_jobs(system_path):
+def _collect_colour_example_jobs(system, system_path, colours):
     """One card for the template as authored, plus one per cartridge colour."""
     candidates = []
     for filename in sorted(os.listdir(system_path)):
         if not filename.lower().endswith(COVER_EXTENSIONS):
             continue
         job = build_job(
-            "n64", os.path.splitext(filename)[0], os.path.join(system_path, filename)
+            system, os.path.splitext(filename)[0], os.path.join(system_path, filename)
         )
         if job is not None:
             candidates.append(job)
@@ -208,7 +216,7 @@ def _collect_n64_example_jobs(system_path):
     jobs = [replace(candidates.pop(0), colour=None)]
     used_covers = {jobs[0].cover_path}
 
-    for colour in colour_names():
+    for colour in colours:
         source = next(
             (
                 job
@@ -237,8 +245,12 @@ def collect_example_jobs():
         if not os.path.isdir(system_path):
             continue
 
-        if system == "n64":
-            jobs.extend(_collect_n64_example_jobs(system_path))
+        if system in SYSTEM_COLOURS:
+            jobs.extend(
+                _collect_colour_example_jobs(
+                    system, system_path, SYSTEM_COLOURS[system]
+                )
+            )
             continue
 
         filename = _first_cover_file(system_path)

@@ -36,7 +36,7 @@ To limit the number of cards processed use the `--limit` flag followed by a numb
 
 Limiting systems to process is done by passing the `--systems` flag followed by the system names, e.g. `--systems snes nes`.
 
-Use `--example` to generate `output_example.pdf` with one card per system, and for `n64` one card per cartridge colour.
+Use `--example` to generate `output_example.pdf` with one card per system, and one card per cartridge colour for `n64` and `snes`.
 
 Passing the `--keep` flag will keep the temporary files created during processing, otherwise they will be deleted after the PDF is generated.
 
@@ -73,9 +73,9 @@ This script will remove text SVGs which is useful for thenounproject which inclu
 1. Run `python process.py`.
    - This will process all SVG files in the `Cartridges/`, `Consoles/`, `Controllers/`, `Logos/` directories.
 
-### N64 Cartridge Colours
+### Cartridge Colours
 
-The N64 template is drawn once and recoloured at render time, so a game just names the cartridge colour it should print as. Create a `json` file in the `GameCovers/n64` directory named after the artwork file, e.g. `GameCovers/n64/Super Mario 64.json`:
+Templates are drawn once and recoloured at render time, so a game just names the cartridge colour it should print as. Create a `json` file in the game's system directory named after the artwork file, e.g. `GameCovers/n64/Super Mario 64.json`:
 
 ```json
 {
@@ -83,7 +83,21 @@ The N64 template is drawn once and recoloured at render time, so a game just nam
 }
 ```
 
-Available colours are `black`, `blue`, `gold`, `green`, `red` and `yellow`. With no `json` file the game prints on the standard grey cartridge.
+With no `json` file the game prints on the standard grey cartridge.
+
+#### N64
+
+Available colours are `black`, `blue`, `gold`, `green`, `red` and `yellow`.
+
+#### SNES
+
+The SNES only shipped three coloured cartridges, so only those colours are available: `black` (Killer Instinct) and `red` (Doom, Spider-Man & Venom: Maximum Carnage). For example `GameCovers/snes/Killer Instinct.json`:
+
+```json
+{
+    "colour": "black"
+}
+```
 
 ### Sources / Attributions
 
