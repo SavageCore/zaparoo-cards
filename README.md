@@ -91,7 +91,7 @@ Available colours are `black`, `blue`, `gold`, `green`, `red` and `yellow`.
 
 #### SNES
 
-The SNES only shipped three coloured cartridges, so only those colours are available: `black` (Killer Instinct) and `red` (Doom, Spider-Man & Venom: Maximum Carnage). For example `GameCovers/snes/Killer Instinct.json`:
+Available colour is `black` (Killer Instinct). The other two coloured SNES carts (Doom, Spider-Man & Venom: Maximum Carnage) were NTSC-only, and PAL copies shipped on the standard grey shell, so `red` is not offered. For example `GameCovers/snes/Killer Instinct.json`:
 
 ```json
 {

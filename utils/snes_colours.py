@@ -1,13 +1,14 @@
 """SNES cartridge colour variants.
 
-The SNES template ships a single grey design, so the handful of coloured
-cartridges that actually shipped are recoloured onto a copy of it in memory at
-render time. Each game picks a variant with `"colour"` in its
+The SNES template ships a single grey design, so the coloured cartridge that
+actually applies to a PAL collection is recoloured onto a copy of it in memory
+at render time. A game picks a variant with `"colour"` in its
 `GameCovers/<system>/<game>.json` file; with no `colour` key the template is
 rendered on the standard grey cartridge.
 
-Only the three real coloured SNES carts are supported: Killer Instinct shipped
-black, while Doom and Spider-Man & Venom: Maximum Carnage shipped red.
+Only black is supported: Killer Instinct shipped a black cartridge. The two red
+carts (Doom, Spider-Man & Venom: Maximum Carnage) were NTSC-only, and PAL copies
+are the standard grey shell, so red is deliberately not offered.
 """
 
 import re
@@ -27,7 +28,6 @@ class CartridgeColour:
 
 SNES_COLOURS: dict[str, CartridgeColour] = {
     "black": CartridgeColour("#2b2b2b", "#ffffff", "#1a1a1a"),
-    "red": CartridgeColour("#b10000", "#ffffff", "#7d0000"),
 }
 
 _BODY_ID = "Header-Background"
