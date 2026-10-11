@@ -8,7 +8,7 @@ from dataclasses import replace
 
 from yaspin import yaspin
 
-from utils import n64_colours, snes_colours  # type: ignore
+from utils import n64_colours, nes_colours, snes_colours  # type: ignore
 from utils.prepare_pdf import prepare_pdf  # type: ignore
 from utils.render_card import (  # type: ignore
     Job,
@@ -28,6 +28,7 @@ COVER_EXTENSIONS = (".jpg", ".jpeg", ".png")
 # each one offers. `--example` renders one card per colour for these.
 SYSTEM_COLOURS = {
     "n64": n64_colours.colour_names(),
+    "nes": nes_colours.colour_names(),
     "snes": snes_colours.colour_names(),
 }
 
@@ -92,7 +93,7 @@ parser.add_argument(
     "--example",
     action="store_true",
     help="Generate output_example.pdf with one card per system and one card per "
-    "cartridge colour for n64 and snes",
+    "cartridge colour for n64, nes and snes",
 )
 
 args = parser.parse_args()

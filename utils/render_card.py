@@ -8,13 +8,14 @@ from lxml import etree
 from PIL import Image
 from svgpathtools import parse_path  # type: ignore
 
-from utils import n64_colours, snes_colours
+from utils import n64_colours, nes_colours, snes_colours
 from utils.prepare_pdf import from_pixels_to_point
 
 # Each system recolours its own template, keyed by the template's file stem so
 # an override template that has no colour rules simply stays as authored.
 _COLOUR_RENDERERS = {
     "n64": n64_colours.apply_cartridge_colour,
+    "nes": nes_colours.apply_cartridge_colour,
     "snes": snes_colours.apply_cartridge_colour,
 }
 

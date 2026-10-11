@@ -36,7 +36,7 @@ To limit the number of cards processed use the `--limit` flag followed by a numb
 
 Limiting systems to process is done by passing the `--systems` flag followed by the system names, e.g. `--systems snes nes`.
 
-Use `--example` to generate `output_example.pdf` with one card per system, and one card per cartridge colour for `n64` and `snes`.
+Use `--example` to generate `output_example.pdf` with one card per system, and one card per cartridge colour for `n64`, `nes` and `snes`.
 
 Passing the `--keep` flag will keep the temporary files created during processing, otherwise they will be deleted after the PDF is generated.
 
@@ -88,6 +88,16 @@ With no `json` file the game prints on the standard grey cartridge.
 #### N64
 
 Available colours are `black`, `blue`, `gold`, `green`, `red` and `yellow`.
+
+#### NES
+
+Available colour is `gold` (The Legend of Zelda and Zelda II). For example `GameCovers/nes/The Legend of Zelda.json`:
+
+```json
+{
+    "colour": "gold"
+}
+```
 
 #### SNES
 
